@@ -5,8 +5,12 @@ from omegaconf import MISSING
 @dataclass
 class OptimizationConfig:
     optimizer: str = 'adam'
-    lr: float = 1e-4
-    weight_decay: float = 0.0
+    optim_kwargs: dict = field(
+        default_factory= lambda: dict(
+            lr = 1e-4,
+            weight_decay = 0.0
+        )
+    )
     batch_size: int = 2
     num_workers: int = 0
     max_epochs: int = 32

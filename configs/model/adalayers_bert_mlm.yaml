@@ -1,0 +1,11 @@
+name: adalayers
+kwargs:
+  base_model: "bert-base-uncased"
+  project_dim: 128
+  layers_num: 13
+  layer_in_dim: 768
+  attention_heads_num: 16
+  num_classes: ${dataset.num_classes}
+  attention_dropout_prob: 0.2
+  topk_distribution:
+  freeze_distribution: False

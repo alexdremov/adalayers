@@ -5,6 +5,13 @@ from transformers import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
 
+def train_val_split(dataset: datasets.Dataset):
+    splitted = dataset.train_test_split(test_size=0.1, seed=42, stratify_by_column='label')
+    return dict(
+        train=splitted['train'],
+        val=splitted['test']
+    )
+
 
 def load_super_glue_rtf(tokenizer: PreTrainedTokenizer):
     dataset: datasets.DatasetDict = datasets.load_dataset('super_glue', 'rte')
@@ -19,51 +26,55 @@ def load_super_glue_rtf(tokenizer: PreTrainedTokenizer):
         return batch
 
     dataset = dataset.map(preprocess, batched=True)
+    val_train = train_val_split(dataset['train'])
     return datasets.DatasetDict(
-        train=dataset['train'],
-        val=dataset['validation'],
+        train=val_train['train'],
+        val=val_train['val'],
+        test=dataset['validation'],
         unsupervised=dataset['test']
     )
 
 
-def load_glue_cola(tokenizer):
+def load_glue_cola(tokenizer: PreTrainedTokenizer):
     dataset: datasets.DatasetDict = datasets.load_dataset('glue', 'cola')
 
     def preprocess(batch):
         batch.update(
             tokenizer(
                 batch['sentence'],
-                truncation='longest_first',
+                truncation=True
             )
         )
         return batch
 
     dataset = dataset.map(preprocess, batched=True)
-
+    val_train = train_val_split(dataset['train'])
     return datasets.DatasetDict(
-        train=dataset['train'],
-        val=dataset['validation'],
+        train=val_train['train'],
+        val=val_train['val'],
+        test=val_train['validation'],
         unsupervised=dataset['test']
     )
 
 
-def load_imdb(tokenizer):
+def load_imdb(tokenizer: PreTrainedTokenizer):
     dataset: datasets.DatasetDict = datasets.load_dataset('imdb')
 
     def preprocess(batch):
         batch.update(
             tokenizer(
                 batch['text'],
-                truncation='longest_first',
+                truncation=True
             )
         )
         return batch
 
     dataset = dataset.map(preprocess, batched=True)
-
+    val_train = train_val_split(dataset['train'])
     return datasets.DatasetDict(
-        train=dataset['train'],
-        val=dataset['test'],
+        train=val_train['train'],
+        val=val_train['val'],
+        test=dataset['test'],
         unsupervised=dataset['unsupervised']
     )
 

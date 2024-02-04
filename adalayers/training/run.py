@@ -1,4 +1,8 @@
+import os
+
 import hydra
+import hydra.core.hydra_config
+
 import logging
 import wandb
 import torch
@@ -13,9 +17,8 @@ from adalayers.training.train import train
 logger = logging.getLogger(__name__)
 
 
-def process(experiment: Experiment):
+def process(experiment: Experiment, res_dir: str):
     model = build_model(experiment)
-    wandb.watch(model)
 
     tokenizer = build_tokenizer(experiment)
     dataset = build_dataset(experiment.dataset.name, tokenizer)
@@ -23,15 +26,19 @@ def process(experiment: Experiment):
         experiment,
         model,
         tokenizer,
-        dataset
+        dataset,
+        res_dir
     )
+
+    torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict.pt"))
+
 
 OmegaConf.register_new_resolver(
     "cat", lambda *x: ' '.join(x)
 )
 
 
-@hydra.main(config_path='../../configs', version_base=None, config_name='base_exp')
+@hydra.main(config_path='../../configs', version_base=None)
 def main(cfg: DictConfig):
     experiment: Experiment = OmegaConf.merge(OmegaConf.structured(Experiment), cfg)
     experiment_resolved = OmegaConf.to_container(
@@ -45,7 +52,10 @@ def main(cfg: DictConfig):
         group="DDP",
     )
     logger.info(experiment)
-    process(experiment)
+
+    res_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+    logger.info(f"{res_dir = }")
+    process(experiment, res_dir)
     wandb.finish()
 
 

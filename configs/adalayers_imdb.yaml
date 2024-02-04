@@ -1,0 +1,10 @@
+defaults:
+  - model: adalayers_bert_mlm
+  - optimization: adam
+  - tokenizer_pretrained: bert_base_uncased
+  - dataset: imdb
+  - hydra: common
+  - _self_
+
+wandb:
+  name: ${cat:"test", ${dataset.name}, ${model.name}}
