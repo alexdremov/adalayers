@@ -2,9 +2,12 @@ defaults:
   - model: adalayers_bert_mlm
   - optimization: adam
   - tokenizer_pretrained: bert_base_uncased
-  - dataset: rte
+  - dataset: cola
   - hydra: common
   - _self_
+
+optimization:
+  max_epochs: 256
 
 wandb:
   name: ${cat:"test", ${dataset.name}, ${model.name}}

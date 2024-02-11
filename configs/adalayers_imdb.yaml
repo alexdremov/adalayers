@@ -1,7 +1,7 @@
 defaults:
-  - model: adalayers_bert_mlm
+  - model: adalayers_roberta_base
   - optimization: adam
-  - tokenizer_pretrained: bert_base_uncased
+  - tokenizer_pretrained: roberta_base
   - dataset: imdb
   - hydra: common
   - _self_

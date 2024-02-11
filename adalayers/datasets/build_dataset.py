@@ -53,7 +53,7 @@ def load_glue_cola(tokenizer: PreTrainedTokenizer):
     return datasets.DatasetDict(
         train=val_train['train'],
         val=val_train['val'],
-        test=val_train['validation'],
+        test=dataset['validation'],
         unsupervised=dataset['test']
     )
 

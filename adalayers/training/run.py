@@ -82,21 +82,18 @@ def process(experiment: Experiment, res_dir: str):
         res_dir,
         wandb_logger
     )
-    if train_res is None:  # non-zero rank
-        return
-
-    best_model_path, last_model_path = train_res
-    eval_and_save(
-        experiment=experiment,
-        best_model_path=best_model_path,
-        last_model_path=last_model_path,
-        dataset=dataset,
-        model=model,
-        res_dir=res_dir,
-        tokenizer=tokenizer,
-        wandb_logger=wandb_logger
-    )
-
+    if train_res is not None:  # zero rank
+        best_model_path, last_model_path = train_res
+        eval_and_save(
+            experiment=experiment,
+            best_model_path=best_model_path,
+            last_model_path=last_model_path,
+            dataset=dataset,
+            model=model,
+            res_dir=res_dir,
+            tokenizer=tokenizer,
+            wandb_logger=wandb_logger
+        )
     wandb_logger.finalize(status='success')
 
 OmegaConf.register_new_resolver(

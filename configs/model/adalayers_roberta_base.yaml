@@ -1,6 +1,6 @@
 name: adalayers
 kwargs:
-  base_model: "bert-base-uncased"
+  base_model: "FacebookAI/roberta-base"
   project_dim: 128
   layers_num: 13
   layer_in_dim: 768

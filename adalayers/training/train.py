@@ -12,6 +12,7 @@ import torch.utils.data
 
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 from lightning.pytorch.callbacks import ModelCheckpoint
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -83,7 +84,22 @@ class LightningModel(pl.LightningModule):
             self.parameters(),
             **self.experiment.optimization.optim_kwargs
         )
-        return optimizer
+        schedulers = [
+            {
+                'scheduler': ReduceLROnPlateau(
+                    optimizer,
+                    mode='max',
+                    verbose=True,
+                    factor=0.5,
+                    min_lr=1e-6,
+                    patience=25
+                ),
+                'monitor': f'val/{self.experiment.optimization.best_metric}',
+                'interval': 'epoch',
+                'frequency': 1
+            }
+        ]
+        return [optimizer], schedulers
 
     def training_step(self, batch, batch_idx):
         output: SequenceClassifierOutput = self(
