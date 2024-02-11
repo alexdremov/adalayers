@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import lightning as pl
 
@@ -31,6 +32,7 @@ class LightningModel(pl.LightningModule):
         self.print_distribution = True
 
         self.batch_size = experiment.optimization.batch_size
+        self.batch_size_eval = experiment.optimization.batch_size_eval
         self.num_workers = experiment.optimization.num_workers
 
         self.collator = transformers.DataCollatorWithPadding(tokenizer)
@@ -123,8 +125,8 @@ class LightningModel(pl.LightningModule):
 
         name = 'test'
         self.log(f'{name}/loss', output.loss, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/acc', self.acc.compute(), on_epoch=True, sync_dist=True)
-        self.log(f'{name}/f1', self.f1.compute(), on_epoch=True, sync_dist=True)
+        self.log(f'{name}/acc', self.acc, on_epoch=True, sync_dist=True)
+        self.log(f'{name}/f1', self.f1, on_epoch=True, sync_dist=True)
 
     def predict_step(self, batch, batch_idx):
         output = self(
@@ -140,6 +142,16 @@ class LightningModel(pl.LightningModule):
             logger.info("Adaptive layers distribution:")
             logger.info(distribution.detach().cpu().view(-1))
 
+    def on_validation_epoch_end(self):
+        metrics = dict(
+            acc=self.acc.compute(),
+            f1=self.f1.compute()
+        )
+        if self.trainer.is_global_zero:
+            logger.info(
+                metrics
+            )
+
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return torch.utils.data.DataLoader(
             self.dataset['train'],
@@ -153,7 +165,7 @@ class LightningModel(pl.LightningModule):
     def val_dataloader(self) -> TRAIN_DATALOADERS:
         return torch.utils.data.DataLoader(
             self.dataset['val'],
-            batch_size=self.batch_size,
+            batch_size=self.batch_size_eval,
             shuffle=False,
             pin_memory=torch.cuda.is_available(),
             num_workers=self.num_workers,
@@ -176,10 +188,10 @@ def train(
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(root_dir, 'lightning_checkpoints'),
         filename='{epoch}-{val/loss:.2f}-{val/' + experiment.optimization.best_metric + ':.2f}',
-        save_last=True,
         monitor=f'val/{experiment.optimization.best_metric}',
         mode='max',
-        save_weights_only=True
+        save_weights_only=True,
+        verbose=True,
     )
 
     trainer = pl.Trainer(
@@ -199,5 +211,14 @@ def train(
     trainer.fit(
         pl_model
     )
+    logger.info("End train")
 
-    return trainer, pl_model, checkpoint_callback.best_model_path, os.path.join(root_dir, 'lightning_checkpoints/last.ckpt')
+    last_path = os.path.join(root_dir, 'lightning_checkpoints/last.ckpt')
+    trainer.save_checkpoint(last_path)
+
+    if not trainer.is_global_zero:
+        return None
+    return (
+        checkpoint_callback.best_model_path,
+        last_path,
+    )

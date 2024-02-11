@@ -7,19 +7,17 @@ import logging
 import torch
 import random
 
-import lightning as pl
 from lightning.pytorch.loggers import WandbLogger
 from lightning import seed_everything as pl_seed_everything
 
 import numpy as np
 
 from omegaconf import OmegaConf, DictConfig
-from wandb.apis.public import Run
 
 from adalayers.training.config import Experiment
 from adalayers.models import build_model, build_tokenizer
 from adalayers.datasets import build_dataset
-from adalayers.training.evaluate import evaluate
+from adalayers.training.evaluate import eval_and_save
 from adalayers.training.train import train
 
 logger = logging.getLogger(__name__)
@@ -52,11 +50,6 @@ def seed_everything(seed: int = 42):
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
-def dump_wandb_summary_metrics(wandb: Run, results, name, model):
-    for k, v in results.items():
-        wandb.summary[f"{name}_{model}_{k}"] = v
-
-
 def process(experiment: Experiment, res_dir: str):
     model = build_model(experiment)
 
@@ -81,7 +74,7 @@ def process(experiment: Experiment, res_dir: str):
         wandb_logger.experiment.define_metric(f"{step}/acc_epoch", goal="maximize", summary="max,last")
         wandb_logger.experiment.define_metric(f"{step}/f1_epoch", goal="maximize", summary="max,last")
 
-    trainer, pl_model, best_model_path, last_model_path = train(
+    train_res = train(
         experiment,
         model,
         tokenizer,
@@ -89,41 +82,22 @@ def process(experiment: Experiment, res_dir: str):
         res_dir,
         wandb_logger
     )
-
-    if not trainer.is_global_zero:
+    if train_res is None:  # non-zero rank
         return
 
-    trainer = pl.Trainer(
-        accelerator='gpu',
-        default_root_dir=res_dir,
-        devices=1,
-        num_nodes=1
+    best_model_path, last_model_path = train_res
+    eval_and_save(
+        experiment=experiment,
+        best_model_path=best_model_path,
+        last_model_path=last_model_path,
+        dataset=dataset,
+        model=model,
+        res_dir=res_dir,
+        tokenizer=tokenizer,
+        wandb_logger=wandb_logger
     )
 
-    pl_model.load_state_dict(torch.load(last_model_path)['state_dict'])
-    model = pl_model.model
-    torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_last.pt"))
-    model.save_pretrained(os.path.join(res_dir, "model_last"))
-
-    val_res = evaluate(experiment, trainer, pl_model, dataset['val'])
-    test_res = evaluate(experiment, trainer, pl_model, dataset['test'])
-
-    dump_wandb_summary_metrics(wandb_logger.experiment, val_res, name='val', model='last')
-    dump_wandb_summary_metrics(wandb_logger.experiment, test_res, name='test', model='last')
-
-    pl_model.load_state_dict(torch.load(best_model_path)['state_dict'])
-    model = pl_model.model
-    torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_best.pt"))
-    model.save_pretrained(os.path.join(res_dir, "model_best"))
-
-    val_res = evaluate(experiment, trainer, pl_model, dataset['val'])
-    test_res = evaluate(experiment, trainer, pl_model, dataset['test'])
-
-    dump_wandb_summary_metrics(wandb_logger.experiment, val_res, name='val', model='best')
-    dump_wandb_summary_metrics(wandb_logger.experiment, test_res, name='test', model='best')
-
     wandb_logger.finalize(status='success')
-
 
 OmegaConf.register_new_resolver(
     "cat", lambda *x: ' '.join(x)

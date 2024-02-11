@@ -12,6 +12,7 @@ class OptimizationConfig:
         )
     )
     batch_size: int = 2
+    batch_size_eval: int = 4
     num_workers: int = 0
     max_epochs: int = 32
     best_metric: str = "f1"

@@ -3,5 +3,6 @@ optim_kwargs:
   lr: 1e-4
   weight_decay: 0.0
 batch_size: 128
+batch_size_eval: 256
 num_workers: 8
 max_epochs: 32
