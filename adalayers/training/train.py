@@ -1,26 +1,23 @@
 import logging
-import functools
+import os
 
 import lightning as pl
-from lightning.pytorch.loggers import WandbLogger
 
 import transformers
 import torchmetrics
 
 import torch
-import torch.nn as nn
 import torch.utils.data
-from lightning.pytorch.strategies import DDPStrategy
+
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
+from lightning.pytorch.callbacks import ModelCheckpoint
+
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+from adalayers.models.ada_layers_classifier import AdaLayersForSequenceClassification
 from adalayers.training.config import Experiment
 
 logger = logging.getLogger(__name__)
-
-
-def collate_fn(batch, collator):
-    return collator(batch)
 
 
 class LightningModel(pl.LightningModule):
@@ -30,6 +27,8 @@ class LightningModel(pl.LightningModule):
         self.save_hyperparameters(experiment)
         self.model = model
         self.experiment = experiment
+
+        self.print_distribution = True
 
         self.batch_size = experiment.optimization.batch_size
         self.num_workers = experiment.optimization.num_workers
@@ -47,12 +46,21 @@ class LightningModel(pl.LightningModule):
             num_classes=experiment.dataset.num_classes,
             average='macro'
         )
+        self.test_f1 = torchmetrics.classification.F1Score(
+            task="multiclass",
+            num_classes=experiment.dataset.num_classes,
+            average='macro'
+        )
 
         self.acc = torchmetrics.classification.Accuracy(
             task="multiclass",
             num_classes=experiment.dataset.num_classes
         )
         self.valid_acc = torchmetrics.classification.Accuracy(
+            task="multiclass",
+            num_classes=experiment.dataset.num_classes
+        )
+        self.test_acc = torchmetrics.classification.Accuracy(
             task="multiclass",
             num_classes=experiment.dataset.num_classes
         )
@@ -98,19 +106,39 @@ class LightningModel(pl.LightningModule):
         self.valid_acc.update(output.logits, batch['labels'])
         self.valid_f1.update(output.logits, batch['labels'])
 
-        self.log('val/loss', output.loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
-        self.log('val/acc', self.acc, prog_bar=True, on_epoch=True, on_step=True, sync_dist=True)
-        self.log('val/f1', self.f1, prog_bar=True, on_epoch=True, on_step=True, sync_dist=True)
+        name = 'val'
+        self.log(f'{name}/loss', output.loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
+        self.log(f'{name}/acc', self.acc, prog_bar=True, on_epoch=True, on_step=True, sync_dist=True)
+        self.log(f'{name}/f1', self.f1, prog_bar=True, on_epoch=True, on_step=True, sync_dist=True)
 
         return output.loss
 
-    def on_validation_epoch_end(self):
-        logger.info(
-            dict(
-                acc=self.acc.compute(),
-                f1=self.f1.compute()
-            )
+    def test_step(self, batch, batch_idx):
+        output = self(
+            **batch
         )
+
+        self.test_acc.update(output.logits, batch['labels'])
+        self.test_f1.update(output.logits, batch['labels'])
+
+        name = 'test'
+        self.log(f'{name}/loss', output.loss, on_epoch=True, sync_dist=True)
+        self.log(f'{name}/acc', self.acc.compute(), on_epoch=True, sync_dist=True)
+        self.log(f'{name}/f1', self.f1.compute(), on_epoch=True, sync_dist=True)
+
+    def predict_step(self, batch, batch_idx):
+        output = self(
+            **batch
+        )
+        return output.logits
+
+    def on_train_epoch_end(self):
+        if not self.trainer.is_global_zero:
+            return
+        if isinstance(self.model, AdaLayersForSequenceClassification) and self.print_distribution:
+            distribution = self.model.distribution_normalized
+            logger.info("Adaptive layers distribution:")
+            logger.info(distribution.detach().cpu().view(-1))
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return torch.utils.data.DataLoader(
@@ -119,7 +147,7 @@ class LightningModel(pl.LightningModule):
             shuffle=True,
             pin_memory=torch.cuda.is_available(),
             num_workers=self.num_workers,
-            collate_fn=functools.partial(collate_fn, collator=self.collator)
+            collate_fn=self.collator,
         )
 
     def val_dataloader(self) -> TRAIN_DATALOADERS:
@@ -129,37 +157,47 @@ class LightningModel(pl.LightningModule):
             shuffle=False,
             pin_memory=torch.cuda.is_available(),
             num_workers=self.num_workers,
-            collate_fn=functools.partial(collate_fn, collator=self.collator)
+            collate_fn=self.collator
         )
 
 
 def train(
-        experiment,
+        experiment: Experiment,
         model,
         tokenizer,
         dataset,
-        root_dir
+        root_dir,
+        wandb_logger
 ):
     logger.info(model)
     logger.info(tokenizer)
     logger.info(dataset)
 
-    wandb_logger = WandbLogger(
-        log_model="all",
-        save_dir=root_dir,
-        project=experiment.wandb.project,
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=os.path.join(root_dir, 'lightning_checkpoints'),
+        filename='{epoch}-{val/loss:.2f}-{val/' + experiment.optimization.best_metric + ':.2f}',
+        save_last=True,
+        monitor=f'val/{experiment.optimization.best_metric}',
+        mode='max',
+        save_weights_only=True
     )
-    wandb_logger.watch(model)
 
     trainer = pl.Trainer(
         accelerator='gpu',
         logger=wandb_logger,
         max_epochs=experiment.optimization.max_epochs,
-        strategy=DDPStrategy(find_unused_parameters=True),
-        default_root_dir=root_dir
+        default_root_dir=root_dir,
+        log_every_n_steps=10,
+        callbacks=[
+            checkpoint_callback
+        ]
     )
 
     pl_model = LightningModel(model, tokenizer, dataset, experiment)
+
+    logger.info("Start train")
     trainer.fit(
         pl_model
     )
+
+    return trainer, pl_model, checkpoint_callback.best_model_path, os.path.join(root_dir, 'lightning_checkpoints/last.ckpt')

@@ -1,6 +1,7 @@
 import datasets
 import logging
 
+from datasets import DownloadMode
 from transformers import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)

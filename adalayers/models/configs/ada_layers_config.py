@@ -8,15 +8,17 @@ class AdaLayersForSequenceClassificationConfig(PretrainedConfig):
 
     def __init__(
             self,
-            base_model: str,
-            project_dim: int,
-            layers_num: int,
-            layer_in_dim: int,
-            attention_heads_num: int,
-            num_classes: int,
+            base_model: str = "bert-base-uncased",
+            project_dim: int = 128,
+            layers_num: int = 13,
+            layer_in_dim: int = 768,
+            attention_heads_num: int = 16,
+            num_classes: int = 2,
             attention_dropout_prob: Optional[float] = None,
             topk_distribution: Optional[int] = None,
             freeze_distribution: bool = False,
+            alpha_distribution: float = 1.0,
+            lambda_distribution_entropy: float = 0.01,
             **kwargs,
     ):
         self.base_model = base_model
@@ -28,5 +30,7 @@ class AdaLayersForSequenceClassificationConfig(PretrainedConfig):
         self.topk_distribution = topk_distribution
         self.freeze_distribution = freeze_distribution
         self.num_classes = num_classes
+        self.alpha_distribution = alpha_distribution
+        self.lambda_distribution_entropy = lambda_distribution_entropy
 
         super().__init__(**kwargs)

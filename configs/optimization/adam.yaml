@@ -2,6 +2,6 @@ optimizer: adam
 optim_kwargs:
   lr: 1e-4
   weight_decay: 0.0
-batch_size: 32
+batch_size: 128
 num_workers: 8
 max_epochs: 32

@@ -1,6 +1,8 @@
 import contextlib
 from typing import Optional, Union, Tuple
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -78,11 +80,7 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
 
         projected = torch.stack(
             [
-                norm(
-                    proj(
-                        F.gelu(hidden)
-                    )
-                )
+                norm(proj(F.gelu(hidden)))
                 for proj, norm, hidden in zip(self.projectors, self.norms, hiddens)
             ],
             dim=-1
@@ -90,7 +88,7 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
 
         projected = F.dropout(projected, p=self.config.attention_dropout_prob, training=self.training)
 
-        distribution = F.softmax(self.distribution, dim=0)
+        distribution = self.distribution_normalized
 
         if self.config.topk_distribution is not None:
             weights, indices = torch.topk(distribution, self.config.topk_distribution, dim=0)
@@ -114,6 +112,9 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
         loss = None
         if labels is not None:
             loss = F.cross_entropy(logits, labels.view(-1))
+            if np.isclose(self.config.lambda_distribution_entropy, 0) and not self.config.freeze_distribution:
+                distribution_entropy = -(distribution * torch.log(distribution + 1e-6)).mean()
+                loss += self.config.lambda_distribution_entropy * distribution_entropy
 
         return SequenceClassifierOutput(
             loss=loss,
@@ -121,3 +122,7 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
+    @property
+    def distribution_normalized(self):
+        return F.softmax(self.distribution * self.config.alpha_distribution, dim=0)

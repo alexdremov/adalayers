@@ -14,6 +14,7 @@ class OptimizationConfig:
     batch_size: int = 2
     num_workers: int = 0
     max_epochs: int = 32
+    best_metric: str = "f1"
 
 
 @dataclass
@@ -42,3 +43,4 @@ class Experiment:
     wandb: WandbConfig = field(default_factory=WandbConfig)
     tokenizer_pretrained: dict = field(default_factory=dict)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    seed: int = 42
