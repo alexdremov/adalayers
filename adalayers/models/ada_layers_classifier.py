@@ -46,7 +46,7 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
         )
         self.logits = nn.Linear(config.project_dim, config.num_classes)
         self.distribution = nn.Parameter(
-            torch.zeros(config.layers_num, 1),
+            torch.ones(config.layers_num, 1),
             requires_grad=not self.config.freeze_distribution
         )
 

@@ -7,7 +7,7 @@ defaults:
   - _self_
 
 optimization:
-  max_epochs: 256
+  max_epochs: 16
 
 wandb:
   name: ${cat:"test", ${dataset.name}, ${model.name}}

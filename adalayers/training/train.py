@@ -9,6 +9,7 @@ import torchmetrics
 
 import torch
 import torch.utils.data
+from lightning.pytorch.loggers import wandb
 
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -36,7 +37,11 @@ class LightningModel(pl.LightningModule):
         self.batch_size_eval = experiment.optimization.batch_size_eval
         self.num_workers = experiment.optimization.num_workers
 
-        self.collator = transformers.DataCollatorWithPadding(tokenizer)
+        self.collator = transformers.DataCollatorWithPadding(
+            tokenizer,
+            padding='max_length',
+            max_length=tokenizer.model_max_length
+        )
         self.dataset = dataset.select_columns(['input_ids', 'label', 'attention_mask'])
 
         self.f1 = torchmetrics.classification.F1Score(
@@ -103,16 +108,16 @@ class LightningModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         output: SequenceClassifierOutput = self(
-            **batch,
-            output_hidden_states=True
+            **batch
         )
 
         self.acc.update(output.logits, batch['labels'])
         self.f1.update(output.logits, batch['labels'])
 
-        self.log('train/loss', output.loss, prog_bar=True, on_step=True)
-        self.log('train/acc', self.acc, prog_bar=True, on_epoch=True, on_step=True)
-        self.log('train/f1', self.f1, prog_bar=True, on_epoch=True, on_step=True)
+        name = 'train'
+        self.log(f'{name}/loss', output.loss, prog_bar=True, on_step=True)
+        self.log(f'{name}/acc', self.acc, prog_bar=True, on_epoch=True)
+        self.log(f'{name}/f1', self.f1, prog_bar=True, on_epoch=True)
 
         return output.loss
 
@@ -125,9 +130,9 @@ class LightningModel(pl.LightningModule):
         self.valid_f1.update(output.logits, batch['labels'])
 
         name = 'val'
-        self.log(f'{name}/loss', output.loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/acc', self.acc, prog_bar=True, on_epoch=True, on_step=True, sync_dist=True)
-        self.log(f'{name}/f1', self.f1, prog_bar=True, on_epoch=True, on_step=True, sync_dist=True)
+        self.log(f'{name}/loss', output.loss, prog_bar=True, on_epoch=True, sync_dist=True)
+        self.log(f'{name}/acc', self.valid_acc, prog_bar=True, on_epoch=True, sync_dist=True)
+        self.log(f'{name}/f1', self.valid_f1, prog_bar=True, on_epoch=True, sync_dist=True)
 
         return output.loss
 
@@ -141,8 +146,8 @@ class LightningModel(pl.LightningModule):
 
         name = 'test'
         self.log(f'{name}/loss', output.loss, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/acc', self.acc, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/f1', self.f1, on_epoch=True, sync_dist=True)
+        self.log(f'{name}/acc', self.test_acc, on_epoch=True, sync_dist=True)
+        self.log(f'{name}/f1', self.test_f1, on_epoch=True, sync_dist=True)
 
     def predict_step(self, batch, batch_idx):
         output = self(
@@ -151,8 +156,17 @@ class LightningModel(pl.LightningModule):
         return output.logits
 
     def on_train_epoch_end(self):
+        metrics = dict(
+            acc=self.acc.compute(),
+            f1=self.f1.compute()
+        )
         if not self.trainer.is_global_zero:
             return
+
+        logger.info("Train epoch results")
+        logger.info(
+            metrics
+        )
         if isinstance(self.model, AdaLayersForSequenceClassification) and self.print_distribution:
             distribution = self.model.distribution_normalized
             logger.info("Adaptive layers distribution:")
@@ -160,13 +174,16 @@ class LightningModel(pl.LightningModule):
 
     def on_validation_epoch_end(self):
         metrics = dict(
-            acc=self.acc.compute(),
-            f1=self.f1.compute()
+            acc=self.valid_acc.compute(),
+            f1=self.valid_f1.compute()
         )
-        if self.trainer.is_global_zero:
-            logger.info(
-                metrics
-            )
+        if not self.trainer.is_global_zero:
+            return
+        logger.info("Validation epoch results")
+        logger.info(
+            metrics
+        )
+
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return torch.utils.data.DataLoader(

@@ -54,6 +54,7 @@ def eval_and_save(experiment, best_model_path, last_model_path, dataset, model, 
     model = pl_model.model
     torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_last.pt"))
     model.save_pretrained(os.path.join(res_dir, "model_last"))
+    wandb_logger.experiment.save(os.path.join(res_dir, "model_last"))
 
     val_res = evaluate(experiment, pl_model, dataset['val'])
     test_res = evaluate(experiment, pl_model, dataset['test'])
@@ -69,6 +70,7 @@ def eval_and_save(experiment, best_model_path, last_model_path, dataset, model, 
 
     torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_best.pt"))
     model.save_pretrained(os.path.join(res_dir, "model_best"))
+    wandb_logger.experiment.save(os.path.join(res_dir, "model_best"))
 
     val_res = evaluate(experiment, pl_model, dataset['val'])
     test_res = evaluate(experiment, pl_model, dataset['test'])

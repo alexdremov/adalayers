@@ -59,6 +59,8 @@ def process(experiment: Experiment, res_dir: str):
     experiment_resolved = OmegaConf.to_container(
         experiment, resolve=True, throw_on_missing=True
     )
+    logger.info(experiment_resolved)
+
     wandb_logger = WandbLogger(
         log_model="all",
         save_dir=res_dir,
@@ -94,6 +96,7 @@ def process(experiment: Experiment, res_dir: str):
             tokenizer=tokenizer,
             wandb_logger=wandb_logger
         )
+    torch.distributed.barrier()
     wandb_logger.finalize(status='success')
 
 OmegaConf.register_new_resolver(

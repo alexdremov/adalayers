@@ -1,10 +1,13 @@
 defaults:
   - model: adalayers_roberta_base
   - optimization: adam
-  - tokenizer_pretrained: roberta_base
+  - tokenizer_pretrained: bert_mlm
   - dataset: imdb
   - hydra: common
   - _self_
 
+optimization:
+  max_epochs: 32
+
 wandb:
-  name: ${cat:"test", ${dataset.name}, ${model.name}}
+  name: ${cat:"final", ${dataset.name}, ${model.name}}
