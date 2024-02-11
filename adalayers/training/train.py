@@ -8,9 +8,14 @@ import torchmetrics
 
 import torch
 import torch.utils.data
+import wandb
 
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
-from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
+from lightning.pytorch.callbacks import (
+    ModelCheckpoint,
+    LearningRateMonitor,
+    EarlyStopping,
+)
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from transformers.modeling_outputs import SequenceClassifierOutput
@@ -89,7 +94,7 @@ class LightningModel(pl.LightningModule):
                     verbose=True,
                     factor=0.5,
                     min_lr=1e-6,
-                    patience=25,
+                    patience=5,
                 ),
                 "monitor": f"val/{self.experiment.optimization.best_metric}",
                 "interval": "epoch",
@@ -108,6 +113,17 @@ class LightningModel(pl.LightningModule):
         self.log(f"{name}/loss", output.loss, prog_bar=True, on_step=True)
         self.log(f"{name}/acc", self.acc, prog_bar=True, on_epoch=True)
         self.log(f"{name}/f1", self.f1, prog_bar=True, on_epoch=True)
+
+        if (
+            isinstance(self.model, AdaLayersForSequenceClassification)
+            and self.print_distribution
+            and self.trainer.is_global_zero
+        ):
+            with torch.no_grad():
+                distribution = self.model.distribution_normalized
+                wandb.log({
+                    f"distribution/layer_{i}": value for i, value in enumerate(distribution.detach().cpu().view(-1).numpy().tolist())
+                })
 
         return output.loss
 
@@ -205,13 +221,21 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
     )
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
+    early_stop_callback = EarlyStopping(
+        monitor=f"val/{experiment.optimization.best_metric}",
+        min_delta=0.00,
+        patience=10,
+        verbose=True,
+        mode="max",
+    )
+
     trainer = pl.Trainer(
         accelerator="gpu",
         logger=wandb_logger,
         max_epochs=experiment.optimization.max_epochs,
         default_root_dir=root_dir,
-        log_every_n_steps=10,
-        callbacks=[checkpoint_callback, lr_monitor],
+        log_every_n_steps=15,
+        callbacks=[checkpoint_callback, lr_monitor, early_stop_callback],
     )
 
     pl_model = LightningModel(model, tokenizer, dataset, experiment)

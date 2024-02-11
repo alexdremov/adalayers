@@ -68,7 +68,6 @@ def process(experiment: Experiment, res_dir: str):
         config=experiment_resolved,
         name=experiment.wandb.name,
         notes=experiment.wandb.notes,
-        group=experiment.wandb.name,
     )
     wandb_logger.watch(model)
     for step in ["train", "val", "test"]:

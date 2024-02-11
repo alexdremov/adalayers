@@ -20,6 +20,8 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
     def __init__(self, config: AdaLayersForSequenceClassificationConfig):
         super().__init__(config)
         self.model = transformers.AutoModel.from_pretrained(config.base_model)
+        self.model.eval()
+
         for param in self.model.parameters():
             param.requires_grad = False
 
@@ -58,7 +60,7 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
     ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
         assert output_hidden_states is None or True, "Must always output hidden states"
 
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model(
                 input_ids,
                 attention_mask=attention_mask,
@@ -80,9 +82,10 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
             dim=-1,
         )
 
-        projected = F.dropout(
-            projected, p=self.config.attention_dropout_prob, training=self.training
-        )
+        if self.config.attention_dropout_prob is not None:
+            projected = F.dropout(
+                projected, p=self.config.attention_dropout_prob, training=self.training
+            )
 
         distribution = self.distribution_normalized
 
