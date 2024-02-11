@@ -1,7 +1,7 @@
 defaults:
-  - model: adalayers_bert_mlm
+  - model: adalayers_bert
   - optimization: adam
-  - tokenizer_pretrained: bert_base_uncased
+  - tokenizer_pretrained: bert_mlm
   - dataset: cola
   - hydra: common
   - _self_

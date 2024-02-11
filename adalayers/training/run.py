@@ -71,19 +71,27 @@ def process(experiment: Experiment, res_dir: str):
         group=experiment.wandb.name,
     )
     wandb_logger.watch(model)
-    for step in ['train', 'val']:
-        wandb_logger.experiment.define_metric(f"{step}/loss_epoch", goal="minimize", summary="min,last")
-        wandb_logger.experiment.define_metric(f"{step}/acc_epoch", goal="maximize", summary="max,last")
-        wandb_logger.experiment.define_metric(f"{step}/f1_epoch", goal="maximize", summary="max,last")
+    for step in ["train", "val", "test"]:
+        wandb_logger.experiment.define_metric(
+            f"{step}/loss_epoch", goal="minimize", summary="min,last"
+        )
+        wandb_logger.experiment.define_metric(
+            f"{step}/acc_epoch", goal="maximize", summary="max,last"
+        )
+        wandb_logger.experiment.define_metric(
+            f"{step}/f1_epoch", goal="maximize", summary="max,last"
+        )
+        wandb_logger.experiment.define_metric(
+            f"{step}/loss", goal="minimize", summary="min,last"
+        )
+        wandb_logger.experiment.define_metric(
+            f"{step}/acc", goal="maximize", summary="max,last"
+        )
+        wandb_logger.experiment.define_metric(
+            f"{step}/f1", goal="maximize", summary="max,last"
+        )
 
-    train_res = train(
-        experiment,
-        model,
-        tokenizer,
-        dataset,
-        res_dir,
-        wandb_logger
-    )
+    train_res = train(experiment, model, tokenizer, dataset, res_dir, wandb_logger)
     if train_res is not None:  # zero rank
         best_model_path, last_model_path = train_res
         eval_and_save(
@@ -94,17 +102,16 @@ def process(experiment: Experiment, res_dir: str):
             model=model,
             res_dir=res_dir,
             tokenizer=tokenizer,
-            wandb_logger=wandb_logger
+            wandb_logger=wandb_logger,
         )
     torch.distributed.barrier()
-    wandb_logger.finalize(status='success')
-
-OmegaConf.register_new_resolver(
-    "cat", lambda *x: ' '.join(x)
-)
+    wandb_logger.finalize(status="success")
 
 
-@hydra.main(config_path='../../configs', version_base=None)
+OmegaConf.register_new_resolver("cat", lambda *x: " ".join(x))
+
+
+@hydra.main(config_path="../../configs", version_base=None)
 def main(cfg: DictConfig):
     experiment: Experiment = OmegaConf.merge(OmegaConf.structured(Experiment), cfg)
     seed_everything(experiment.seed)
@@ -115,5 +122,5 @@ def main(cfg: DictConfig):
     process(experiment, res_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

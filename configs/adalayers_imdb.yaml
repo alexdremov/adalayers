@@ -1,5 +1,5 @@
 defaults:
-  - model: adalayers_roberta_base
+  - model: adalayers_bert
   - optimization: adam
   - tokenizer_pretrained: bert_mlm
   - dataset: imdb
@@ -7,7 +7,7 @@ defaults:
   - _self_
 
 optimization:
-  max_epochs: 32
+  max_epochs: 1
 
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

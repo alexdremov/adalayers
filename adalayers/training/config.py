@@ -4,13 +4,8 @@ from omegaconf import MISSING
 
 @dataclass
 class OptimizationConfig:
-    optimizer: str = 'adam'
-    optim_kwargs: dict = field(
-        default_factory= lambda: dict(
-            lr = 1e-4,
-            weight_decay = 0.0
-        )
-    )
+    optimizer: str = "adam"
+    optim_kwargs: dict = field(default_factory=lambda: dict(lr=1e-4, weight_decay=0.0))
     batch_size: int = 2
     batch_size_eval: int = 4
     num_workers: int = 0

@@ -1,7 +1,10 @@
 import transformers
 from adalayers.training.config import Experiment
 
-from adalayers.models.ada_layers_classifier import AdaLayersForSequenceClassification, AdaLayersForSequenceClassificationConfig
+from adalayers.models.ada_layers_classifier import (
+    AdaLayersForSequenceClassification,
+    AdaLayersForSequenceClassificationConfig,
+)
 
 
 def build_model(config: Experiment):
@@ -12,14 +15,10 @@ def build_model(config: Experiment):
             )
         case "adalayers":
             config = AdaLayersForSequenceClassificationConfig(**config.model.kwargs)
-            return AdaLayersForSequenceClassification(
-                config
-            )
+            return AdaLayersForSequenceClassification(config)
         case _:
             raise RuntimeError(f"Unknown model architecture {config.model.name = }")
 
 
 def build_tokenizer(config: Experiment):
-    return transformers.AutoTokenizer.from_pretrained(
-        **config.tokenizer_pretrained
-    )
+    return transformers.AutoTokenizer.from_pretrained(**config.tokenizer_pretrained)

@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 
 import lightning as pl
 
@@ -9,10 +8,9 @@ import torchmetrics
 
 import torch
 import torch.utils.data
-from lightning.pytorch.loggers import wandb
 
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from transformers.modeling_outputs import SequenceClassifierOutput
@@ -38,39 +36,34 @@ class LightningModel(pl.LightningModule):
         self.num_workers = experiment.optimization.num_workers
 
         self.collator = transformers.DataCollatorWithPadding(
-            tokenizer,
-            padding='max_length',
-            max_length=tokenizer.model_max_length
+            tokenizer, padding="max_length", max_length=tokenizer.model_max_length
         )
-        self.dataset = dataset.select_columns(['input_ids', 'label', 'attention_mask'])
+        self.dataset = dataset.select_columns(["input_ids", "label", "attention_mask"])
 
         self.f1 = torchmetrics.classification.F1Score(
             task="multiclass",
             num_classes=experiment.dataset.num_classes,
-            average='macro'
+            average="macro",
         )
         self.valid_f1 = torchmetrics.classification.F1Score(
             task="multiclass",
             num_classes=experiment.dataset.num_classes,
-            average='macro'
+            average="macro",
         )
         self.test_f1 = torchmetrics.classification.F1Score(
             task="multiclass",
             num_classes=experiment.dataset.num_classes,
-            average='macro'
+            average="macro",
         )
 
         self.acc = torchmetrics.classification.Accuracy(
-            task="multiclass",
-            num_classes=experiment.dataset.num_classes
+            task="multiclass", num_classes=experiment.dataset.num_classes
         )
         self.valid_acc = torchmetrics.classification.Accuracy(
-            task="multiclass",
-            num_classes=experiment.dataset.num_classes
+            task="multiclass", num_classes=experiment.dataset.num_classes
         )
         self.test_acc = torchmetrics.classification.Accuracy(
-            task="multiclass",
-            num_classes=experiment.dataset.num_classes
+            task="multiclass", num_classes=experiment.dataset.num_classes
         )
 
     def forward(self, **kwargs):
@@ -78,116 +71,105 @@ class LightningModel(pl.LightningModule):
 
     def configure_optimizers(self):
         match self.experiment.optimization.optimizer:
-            case 'adam':
+            case "adam":
                 optimizer_cls = torch.optim.Adam
-            case 'adamw':
+            case "adamw":
                 optimizer_cls = torch.optim.AdamW
             case _:
-                assert False, 'unknown optimizer type'
+                assert False, "unknown optimizer type"
 
         optimizer = optimizer_cls(
-            self.parameters(),
-            **self.experiment.optimization.optim_kwargs
+            self.parameters(), **self.experiment.optimization.optim_kwargs
         )
         schedulers = [
             {
-                'scheduler': ReduceLROnPlateau(
+                "scheduler": ReduceLROnPlateau(
                     optimizer,
-                    mode='max',
+                    mode="max",
                     verbose=True,
                     factor=0.5,
                     min_lr=1e-6,
-                    patience=25
+                    patience=25,
                 ),
-                'monitor': f'val/{self.experiment.optimization.best_metric}',
-                'interval': 'epoch',
-                'frequency': 1
+                "monitor": f"val/{self.experiment.optimization.best_metric}",
+                "interval": "epoch",
+                "frequency": 1,
             }
         ]
         return [optimizer], schedulers
 
     def training_step(self, batch, batch_idx):
-        output: SequenceClassifierOutput = self(
-            **batch
-        )
+        output: SequenceClassifierOutput = self(**batch)
 
-        self.acc.update(output.logits, batch['labels'])
-        self.f1.update(output.logits, batch['labels'])
+        self.acc.update(output.logits, batch["labels"])
+        self.f1.update(output.logits, batch["labels"])
 
-        name = 'train'
-        self.log(f'{name}/loss', output.loss, prog_bar=True, on_step=True)
-        self.log(f'{name}/acc', self.acc, prog_bar=True, on_epoch=True)
-        self.log(f'{name}/f1', self.f1, prog_bar=True, on_epoch=True)
+        name = "train"
+        self.log(f"{name}/loss", output.loss, prog_bar=True, on_step=True)
+        self.log(f"{name}/acc", self.acc, prog_bar=True, on_epoch=True)
+        self.log(f"{name}/f1", self.f1, prog_bar=True, on_epoch=True)
 
         return output.loss
 
     def validation_step(self, batch, batch_idx):
-        output = self(
-            **batch
+        output = self(**batch)
+
+        self.valid_acc.update(output.logits, batch["labels"])
+        self.valid_f1.update(output.logits, batch["labels"])
+
+        name = "val"
+        self.log(
+            f"{name}/loss", output.loss, prog_bar=True, on_epoch=True, sync_dist=True
         )
-
-        self.valid_acc.update(output.logits, batch['labels'])
-        self.valid_f1.update(output.logits, batch['labels'])
-
-        name = 'val'
-        self.log(f'{name}/loss', output.loss, prog_bar=True, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/acc', self.valid_acc, prog_bar=True, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/f1', self.valid_f1, prog_bar=True, on_epoch=True, sync_dist=True)
+        self.log(
+            f"{name}/acc", self.valid_acc, prog_bar=True, on_epoch=True, sync_dist=True
+        )
+        self.log(
+            f"{name}/f1", self.valid_f1, prog_bar=True, on_epoch=True, sync_dist=True
+        )
 
         return output.loss
 
     def test_step(self, batch, batch_idx):
-        output = self(
-            **batch
-        )
+        output = self(**batch)
 
-        self.test_acc.update(output.logits, batch['labels'])
-        self.test_f1.update(output.logits, batch['labels'])
+        self.test_acc.update(output.logits, batch["labels"])
+        self.test_f1.update(output.logits, batch["labels"])
 
-        name = 'test'
-        self.log(f'{name}/loss', output.loss, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/acc', self.test_acc, on_epoch=True, sync_dist=True)
-        self.log(f'{name}/f1', self.test_f1, on_epoch=True, sync_dist=True)
+        name = "test"
+        self.log(f"{name}/loss", output.loss, on_epoch=True, sync_dist=True)
+        self.log(f"{name}/acc", self.test_acc, on_epoch=True, sync_dist=True)
+        self.log(f"{name}/f1", self.test_f1, on_epoch=True, sync_dist=True)
 
     def predict_step(self, batch, batch_idx):
-        output = self(
-            **batch
-        )
+        output = self(**batch)
         return output.logits
 
     def on_train_epoch_end(self):
-        metrics = dict(
-            acc=self.acc.compute(),
-            f1=self.f1.compute()
-        )
+        metrics = dict(acc=self.acc.compute(), f1=self.f1.compute())
         if not self.trainer.is_global_zero:
             return
 
         logger.info("Train epoch results")
-        logger.info(
-            metrics
-        )
-        if isinstance(self.model, AdaLayersForSequenceClassification) and self.print_distribution:
+        logger.info(metrics)
+        if (
+            isinstance(self.model, AdaLayersForSequenceClassification)
+            and self.print_distribution
+        ):
             distribution = self.model.distribution_normalized
             logger.info("Adaptive layers distribution:")
             logger.info(distribution.detach().cpu().view(-1))
 
     def on_validation_epoch_end(self):
-        metrics = dict(
-            acc=self.valid_acc.compute(),
-            f1=self.valid_f1.compute()
-        )
+        metrics = dict(acc=self.valid_acc.compute(), f1=self.valid_f1.compute())
         if not self.trainer.is_global_zero:
             return
         logger.info("Validation epoch results")
-        logger.info(
-            metrics
-        )
-
+        logger.info(metrics)
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return torch.utils.data.DataLoader(
-            self.dataset['train'],
+            self.dataset["train"],
             batch_size=self.batch_size,
             shuffle=True,
             pin_memory=torch.cuda.is_available(),
@@ -197,56 +179,48 @@ class LightningModel(pl.LightningModule):
 
     def val_dataloader(self) -> TRAIN_DATALOADERS:
         return torch.utils.data.DataLoader(
-            self.dataset['val'],
+            self.dataset["val"],
             batch_size=self.batch_size_eval,
             shuffle=False,
             pin_memory=torch.cuda.is_available(),
             num_workers=self.num_workers,
-            collate_fn=self.collator
+            collate_fn=self.collator,
         )
 
 
-def train(
-        experiment: Experiment,
-        model,
-        tokenizer,
-        dataset,
-        root_dir,
-        wandb_logger
-):
+def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_logger):
     logger.info(model)
     logger.info(tokenizer)
     logger.info(dataset)
 
     checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join(root_dir, 'lightning_checkpoints'),
-        filename='{epoch}-{val/loss:.2f}-{val/' + experiment.optimization.best_metric + ':.2f}',
-        monitor=f'val/{experiment.optimization.best_metric}',
-        mode='max',
+        dirpath=os.path.join(root_dir, "lightning_checkpoints"),
+        filename="{epoch}-{val/loss:.2f}-{val/"
+        + experiment.optimization.best_metric
+        + ":.2f}",
+        monitor=f"val/{experiment.optimization.best_metric}",
+        mode="max",
         save_weights_only=True,
         verbose=True,
     )
+    lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
     trainer = pl.Trainer(
-        accelerator='gpu',
+        accelerator="gpu",
         logger=wandb_logger,
         max_epochs=experiment.optimization.max_epochs,
         default_root_dir=root_dir,
         log_every_n_steps=10,
-        callbacks=[
-            checkpoint_callback
-        ]
+        callbacks=[checkpoint_callback, lr_monitor],
     )
 
     pl_model = LightningModel(model, tokenizer, dataset, experiment)
 
     logger.info("Start train")
-    trainer.fit(
-        pl_model
-    )
+    trainer.fit(pl_model)
     logger.info("End train")
 
-    last_path = os.path.join(root_dir, 'lightning_checkpoints/last.ckpt')
+    last_path = os.path.join(root_dir, "lightning_checkpoints/last.ckpt")
     trainer.save_checkpoint(last_path)
 
     if not trainer.is_global_zero:

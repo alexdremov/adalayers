@@ -7,19 +7,19 @@ class AdaLayersForSequenceClassificationConfig(PretrainedConfig):
     model_type = "ada_layers_classifier"
 
     def __init__(
-            self,
-            base_model: str = "bert-base-uncased",
-            project_dim: int = 128,
-            layers_num: int = 13,
-            layer_in_dim: int = 768,
-            attention_heads_num: int = 16,
-            num_classes: int = 2,
-            attention_dropout_prob: Optional[float] = None,
-            topk_distribution: Optional[int] = None,
-            freeze_distribution: bool = False,
-            alpha_distribution: float = 10.0,
-            lambda_distribution_entropy: float = 0.5,
-            **kwargs,
+        self,
+        base_model: str = "bert-base-uncased",
+        project_dim: int = 128,
+        layers_num: int = 13,
+        layer_in_dim: int = 768,
+        attention_heads_num: int = 16,
+        num_classes: int = 2,
+        attention_dropout_prob: Optional[float] = None,
+        topk_distribution: Optional[int] = None,
+        freeze_distribution: bool = False,
+        alpha_distribution: float = 10.0,
+        lambda_distribution_entropy: float = 0.05,
+        **kwargs,
     ):
         self.base_model = base_model
         self.project_dim = project_dim
