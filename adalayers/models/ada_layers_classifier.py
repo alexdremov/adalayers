@@ -100,13 +100,6 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
             ).mean()
             loss += self.config.lambda_distribution_entropy * distribution_entropy
 
-        if self.config.topk_distribution is not None:
-            weights, indices = torch.topk(
-                distribution, k=self.config.topk_distribution, dim=0
-            )
-            projected = projected[..., indices.view(-1)]
-            distribution = weights
-
         context = (
             torch.no_grad()
             if self.config.freeze_distribution
@@ -136,4 +129,14 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
 
     @property
     def distribution_normalized(self):
-        return F.softmax(self.distribution * self.config.alpha_distribution, dim=0)
+        distribution = self.distribution
+        if self.config.topk_distribution is not None:
+            weights, indices = torch.topk(
+                self.distribution, k=self.config.topk_distribution, dim=0
+            )
+            mask = torch.zeros(self.config.layers_num, device=self.distribution.device)
+            mask[indices.view(-1)] = 1
+
+            minus_inf = torch.tensor([float("-inf")], device=self.distribution.device).expand(distribution.shape[0], )
+            distribution = torch.where((mask == 1).view(-1), distribution.view(-1), minus_inf.view(-1))[..., None]
+        return F.softmax(distribution * self.config.alpha_distribution, dim=0)

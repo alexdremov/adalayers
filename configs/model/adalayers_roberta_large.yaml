@@ -1,7 +1,7 @@
 name: adalayers
 kwargs:
   base_model: "FacebookAI/roberta-large"
-  project_dim: 128
+  project_dim: 64
   layers_num: 24
   layer_in_dim: 1024
   attention_heads_num: 16

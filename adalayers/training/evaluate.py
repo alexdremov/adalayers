@@ -55,7 +55,7 @@ def save_wandb_model(run, experiment, directory, name, metrics):
     metadata = dict(config=experiment, name=name)
     metadata.update(metrics)
 
-    metrics_formatted = ", ".join(f"{k}={v:.3f}" for k, v in metrics.items())
+    metrics_formatted = ", ".join(f"{k}={v:.4f}" for k, v in metrics.items())
     description = experiment.dataset.name + " | " + metrics_formatted
     artifact = wandb.Artifact(
         name=name, type="model", metadata=metadata, description=description

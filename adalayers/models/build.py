@@ -1,4 +1,7 @@
+from safetensors.torch import load_model
 import transformers
+import os
+import logging
 from adalayers.training.config import Experiment
 
 from adalayers.models.ada_layers_classifier import (
@@ -6,18 +9,29 @@ from adalayers.models.ada_layers_classifier import (
     AdaLayersForSequenceClassificationConfig,
 )
 
+logger = logging.getLogger(__name__)
 
-def build_model(config: Experiment):
+def build_model(config: Experiment, run):
     match config.model.name:
         case "automodel":
-            return transformers.AutoModelForSequenceClassification.from_pretrained(
+            model = transformers.AutoModelForSequenceClassification.from_pretrained(
                 **config.model.kwargs
             )
         case "adalayers":
-            config = AdaLayersForSequenceClassificationConfig(**config.model.kwargs)
-            return AdaLayersForSequenceClassification(config)
+            config_adalayers = AdaLayersForSequenceClassificationConfig(**config.model.kwargs)
+            model = AdaLayersForSequenceClassification(config_adalayers)
         case _:
             raise RuntimeError(f"Unknown model architecture {config.model.name = }")
+
+    if config.model.restore_artifact is not None:
+        artifact = run.use_artifact(config.model.restore_artifact)
+        if artifact is not None:
+            loaded = artifact.download()
+            load_model(model, os.path.join(loaded, 'model.safetensors'))
+        else:
+            logger.warning(f"No artifact found for {config.model.restore_artifact}. It's fine if this is a DDP subprocess")
+
+    return model
 
 
 def build_tokenizer(config: Experiment):

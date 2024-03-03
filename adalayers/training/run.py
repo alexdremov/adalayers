@@ -1,6 +1,7 @@
 import os
 
 import hydra
+import wandb
 import hydra.core.hydra_config
 
 import logging
@@ -51,16 +52,10 @@ def seed_everything(seed: int = 42):
 
 
 def process(experiment: Experiment, res_dir: str):
-    model = build_model(experiment)
-
-    tokenizer = build_tokenizer(experiment)
-    dataset = build_dataset(experiment.dataset.name, tokenizer)
-
     experiment_resolved = OmegaConf.to_container(
         experiment, resolve=True, throw_on_missing=True
     )
     logger.info(experiment_resolved)
-
     wandb_logger = WandbLogger(
         log_model="all",
         save_dir=res_dir,
@@ -69,6 +64,11 @@ def process(experiment: Experiment, res_dir: str):
         name=experiment.wandb.name,
         notes=experiment.wandb.notes,
     )
+
+    model = build_model(experiment, wandb_logger.experiment)
+    tokenizer = build_tokenizer(experiment)
+    dataset = build_dataset(experiment.dataset.name, tokenizer)
+
     wandb_logger.watch(model)
     for step in ["train", "val", "test"]:
         wandb_logger.experiment.define_metric(

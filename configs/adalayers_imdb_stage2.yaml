@@ -13,6 +13,10 @@ optimization:
 
 model:
   restore_artifact: "final_imdb_adalayers_model_best:v0"
+  kwargs:
+    topk_distribution: 7
+    attention_dropout_prob: 0.4
+    lambda_distribution_entropy: 0.0
 
 wandb:
-  name: ${cat:"final", ${dataset.name}, ${model.name}}
+  name: ${cat:"final-stage2", ${dataset.name}, ${model.name}}

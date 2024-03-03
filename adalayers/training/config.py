@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from omegaconf import MISSING
 
+from typing import Optional
+
 
 @dataclass
 class OptimizationConfig:
@@ -17,6 +19,7 @@ class OptimizationConfig:
 class ModelConfig:
     name: str = MISSING
     kwargs: dict = field(default_factory=dict)
+    restore_artifact: Optional[str] = None
 
 
 @dataclass
