@@ -89,11 +89,22 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
 
         distribution = self.distribution_normalized
 
+        loss = 0
+        if (
+            not np.isclose(self.config.lambda_distribution_entropy, 0)
+            and not self.config.freeze_distribution
+            and labels is not None
+        ):
+            distribution_entropy = -(
+                    distribution * torch.log(distribution + 1e-6)
+            ).mean()
+            loss += self.config.lambda_distribution_entropy * distribution_entropy
+
         if self.config.topk_distribution is not None:
             weights, indices = torch.topk(
-                distribution, self.config.topk_distribution, dim=0
+                distribution, k=self.config.topk_distribution, dim=0
             )
-            projected = projected[..., indices]
+            projected = projected[..., indices.view(-1)]
             distribution = weights
 
         context = (
@@ -113,17 +124,8 @@ class AdaLayersForSequenceClassification(PreTrainedModel):
         weighted = weighted.mean(-2)
         logits = self.logits(weighted)
 
-        loss = None
         if labels is not None:
-            loss = F.cross_entropy(logits, labels.view(-1))
-            if (
-                np.isclose(self.config.lambda_distribution_entropy, 0)
-                and not self.config.freeze_distribution
-            ):
-                distribution_entropy = -(
-                    distribution * torch.log(distribution + 1e-6)
-                ).mean()
-                loss += self.config.lambda_distribution_entropy * distribution_entropy
+            loss += F.cross_entropy(logits, labels.view(-1))
 
         return SequenceClassifierOutput(
             loss=loss,

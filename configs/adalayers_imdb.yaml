@@ -1,13 +1,15 @@
 defaults:
-  - model: adalayers_bert
+  - model: adalayers_roberta_large
   - optimization: adam
-  - tokenizer_pretrained: bert_mlm
+  - tokenizer_pretrained: adalayers_roberta_large
   - dataset: imdb
   - hydra: common
   - _self_
 
 optimization:
   max_epochs: 128
+  batch_size: 128
+  batch_size_eval: 128
 
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

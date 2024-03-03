@@ -18,7 +18,7 @@ class AdaLayersForSequenceClassificationConfig(PretrainedConfig):
         topk_distribution: Optional[int] = None,
         freeze_distribution: bool = False,
         alpha_distribution: float = 10.0,
-        lambda_distribution_entropy: float = 0.5,
+        lambda_distribution_entropy: float = 0.02,
         **kwargs,
     ):
         self.base_model = base_model

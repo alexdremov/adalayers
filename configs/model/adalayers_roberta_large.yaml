@@ -1,9 +1,9 @@
 name: adalayers
 kwargs:
-  base_model: "bert-base-cased"
+  base_model: "FacebookAI/roberta-large"
   project_dim: 128
-  layers_num: 13
-  layer_in_dim: 768
+  layers_num: 24
+  layer_in_dim: 1024
   attention_heads_num: 16
   num_classes: ${dataset.num_classes}
   attention_dropout_prob: 0.3

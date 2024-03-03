@@ -211,9 +211,11 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(root_dir, "lightning_checkpoints"),
-        filename="{epoch}-{val/loss:.2f}-{val/"
-        + experiment.optimization.best_metric
-        + ":.2f}",
+        filename=(
+            "{epoch}-{val/loss:.2f}-{val/"
+            + experiment.optimization.best_metric
+            + ":.2f}"
+        ),
         monitor=f"val/{experiment.optimization.best_metric}",
         mode="max",
         save_weights_only=True,
