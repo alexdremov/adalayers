@@ -11,8 +11,5 @@ optimization:
   batch_size: 128
   batch_size_eval: 128
 
-model:
-  restore_artifact: "final_imdb_adalayers_model_best:v0"
-
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

@@ -64,6 +64,9 @@ def process(experiment: Experiment, res_dir: str):
         name=experiment.wandb.name,
         notes=experiment.wandb.notes,
     )
+    code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "./..")
+    logger.info(f"Code: {code_dir}")
+    wandb_logger.experiment.log_code(code_dir)
 
     model = build_model(experiment, wandb_logger.experiment)
     tokenizer = build_tokenizer(experiment)

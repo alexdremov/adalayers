@@ -9,6 +9,11 @@ from adalayers.models.ada_layers_classifier import (
     AdaLayersForSequenceClassificationConfig,
 )
 
+from adalayers.models.ada_layers_token_classifier import (
+    AdaLayersForTokenClassification,
+    AdaLayersForTokenClassificationConfig,
+)
+
 logger = logging.getLogger(__name__)
 
 def build_model(config: Experiment, run):
@@ -20,6 +25,9 @@ def build_model(config: Experiment, run):
         case "adalayers":
             config_adalayers = AdaLayersForSequenceClassificationConfig(**config.model.kwargs)
             model = AdaLayersForSequenceClassification(config_adalayers)
+        case "adalayers_token":
+            config_adalayers = AdaLayersForTokenClassificationConfig(**config.model.kwargs)
+            model = AdaLayersForTokenClassification(config_adalayers)
         case _:
             raise RuntimeError(f"Unknown model architecture {config.model.name = }")
 
