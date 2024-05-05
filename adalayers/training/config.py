@@ -13,6 +13,7 @@ class OptimizationConfig:
     num_workers: int = 0
     max_epochs: int = 32
     best_metric: str = "f1"
+    lr_patience: int = 5
 
 
 @dataclass

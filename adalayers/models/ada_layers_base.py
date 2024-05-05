@@ -50,10 +50,19 @@ class AdaLayersBase(PreTrainedModel):
             dropout=config.attention_dropout_prob,
             batch_first=True,
         )
-        self.distribution = nn.Parameter(
-            torch.ones(config.layers_num, 1),
-            requires_grad=not self.config.freeze_distribution,
-        )
+
+        distribution = torch.ones(config.layers_num, 1)
+        if config.pick_one_layer_only is not None:
+            distribution[:] = float("-inf")
+            distribution[config.pick_one_layer_only] = 1
+
+        if self.config.freeze_distribution:
+            self.register_buffer("distribution", distribution)
+        else:
+            self.distribution = nn.Parameter(
+                distribution,
+                requires_grad=True,
+            )
 
     def forward(
         self,
@@ -106,7 +115,7 @@ class AdaLayersBase(PreTrainedModel):
         ):
             distribution_entropy = -(
                     distribution * torch.log(distribution + 1e-6)
-            ).mean()
+            ).sum(-1).mean()
             loss += self.config.lambda_distribution_entropy * distribution_entropy
 
         context = (
@@ -136,12 +145,11 @@ class AdaLayersBase(PreTrainedModel):
     def distribution_normalized(self):
         distribution = self.distribution
         if self.config.topk_distribution is not None:
-            _, indices = torch.topk(
-                self.distribution, k=self.config.topk_distribution, dim=0
+            _, indices_exclude = torch.topk(
+                self.distribution,
+                k=len(self.distribution) - self.config.topk_distribution,
+                dim=0,
+                largest=False
             )
-            mask = torch.zeros(self.config.layers_num, device=self.distribution.device)
-            mask[indices.view(-1)] = 1
-
-            minus_inf = torch.tensor([float("-inf")], device=self.distribution.device).expand(distribution.shape[0], )
-            distribution = torch.where((mask == 1).view(-1), distribution.view(-1), minus_inf.view(-1))[..., None]
+            distribution[indices_exclude] = float("-inf")
         return F.softmax(distribution * self.config.alpha_distribution, dim=0)

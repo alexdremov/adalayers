@@ -18,6 +18,7 @@ class AdaLayersBaseConfig(PretrainedConfig):
         freeze_distribution: bool = False,
         alpha_distribution: float = 10.0,
         lambda_distribution_entropy: float = 0.02,
+        pick_one_layer_only: Optional[int] = None,
         **kwargs,
     ):
         self.base_model = base_model
@@ -27,9 +28,10 @@ class AdaLayersBaseConfig(PretrainedConfig):
         self.attention_heads_num = attention_heads_num
         self.attention_dropout_prob = attention_dropout_prob
         self.topk_distribution = topk_distribution
-        self.freeze_distribution = freeze_distribution
+        self.freeze_distribution = freeze_distribution or pick_one_layer_only is not None
         self.alpha_distribution = alpha_distribution
         self.lambda_distribution_entropy = lambda_distribution_entropy
+        self.pick_one_layer_only = pick_one_layer_only
 
         super().__init__(**kwargs)
 

@@ -1,7 +1,6 @@
 import os
 
 import hydra
-import wandb
 import hydra.core.hydra_config
 
 import logging
@@ -110,7 +109,7 @@ def process(experiment: Experiment, res_dir: str):
     wandb_logger.finalize(status="success")
 
 
-OmegaConf.register_new_resolver("cat", lambda *x: " ".join(x))
+OmegaConf.register_new_resolver("cat", lambda *x: " ".join(map(str, x)))
 
 
 @hydra.main(config_path="../../configs", version_base=None)

@@ -3,3 +3,7 @@ outputs
 .idea
 */**/__pycache__
 */**/*.pyc
+.vscode
+.history
+artifacts
+adalayers_distribution.png

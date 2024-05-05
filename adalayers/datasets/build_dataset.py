@@ -14,15 +14,14 @@ def train_val_split(dataset: datasets.Dataset):
     return dict(train=splitted["train"], val=splitted["test"])
 
 
-def load_super_glue_rtf(tokenizer: PreTrainedTokenizer):
+def load_super_glue_rte(tokenizer: PreTrainedTokenizer):
     dataset: datasets.DatasetDict = datasets.load_dataset("super_glue", "rte")
 
     def preprocess(batch):
         batch.update(
             tokenizer(
-                batch["premise"],
-                batch["hypothesis"],
-                truncation="longest_first",
+                [i + "<sep>" + j for i, j in zip(batch["premise"], batch["hypothesis"])],
+                truncation=True,
             )
         )
         return batch
@@ -74,7 +73,7 @@ def load_imdb(tokenizer: PreTrainedTokenizer):
 def build_dataset(name, tokenizer):
     match name:
         case "super_glue_rte":
-            return load_super_glue_rtf(tokenizer)
+            return load_super_glue_rte(tokenizer)
         case "glue_cola":
             return load_glue_cola(tokenizer)
         case "imdb":

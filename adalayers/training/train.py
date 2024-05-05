@@ -16,6 +16,7 @@ from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     EarlyStopping,
 )
+from lightning.pytorch.strategies import DDPStrategy
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from transformers.modeling_outputs import SequenceClassifierOutput
@@ -84,7 +85,7 @@ class LightningModel(pl.LightningModule):
                 assert False, "unknown optimizer type"
 
         optimizer = optimizer_cls(
-            self.parameters(), **self.experiment.optimization.optim_kwargs
+            [p for p in self.parameters() if p.requires_grad], **self.experiment.optimization.optim_kwargs
         )
         schedulers = [
             {
@@ -94,7 +95,7 @@ class LightningModel(pl.LightningModule):
                     verbose=True,
                     factor=0.5,
                     min_lr=1e-6,
-                    patience=5,
+                    patience=self.experiment.optimization.lr_patience,
                 ),
                 "monitor": f"val/{self.experiment.optimization.best_metric}",
                 "interval": "epoch",
@@ -238,6 +239,7 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
         default_root_dir=root_dir,
         log_every_n_steps=15,
         callbacks=[checkpoint_callback, lr_monitor, early_stop_callback],
+        strategy=DDPStrategy(find_unused_parameters=True),
     )
 
     pl_model = LightningModel(model, tokenizer, dataset, experiment)

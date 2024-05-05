@@ -22,6 +22,12 @@ def build_model(config: Experiment, run):
             model = transformers.AutoModelForSequenceClassification.from_pretrained(
                 **config.model.kwargs
             )
+        case "automodel_freezed":
+            model = transformers.AutoModelForSequenceClassification.from_pretrained(
+                **config.model.kwargs
+            )
+            for name, param in model.named_parameters():
+                param.requires_grad = name.startswith("classifier")
         case "adalayers":
             config_adalayers = AdaLayersForSequenceClassificationConfig(**config.model.kwargs)
             model = AdaLayersForSequenceClassification(config_adalayers)
