@@ -34,7 +34,18 @@ class AdaLayersForTokenClassification(AdaLayersBase):
         logits = self.logits(weighted)
 
         if "labels" in kwargs and kwargs['labels'] is not None:
-            loss += F.cross_entropy(logits.view(-1), kwargs['labels'].view(-1))
+            ce_loss = F.cross_entropy(
+                input=logits.view(-1, logits.size(-1)),
+                target=kwargs['labels'].view(-1),
+                reduction='none' if self.config.focal_loss_enabled else 'mean',
+                ignore_index=-100,
+                weight=self.classes_weights,
+            )
+            if self.config.focal_loss_enabled:
+                pt = torch.exp(-ce_loss)
+                alpha, gamma = self.config.focal_loss_alpha, self.config.focal_loss_gamma
+                ce_loss = (alpha * (1-pt)**gamma * ce_loss).mean()
+            loss += ce_loss
 
         return TokenClassifierOutput(
             loss=loss,

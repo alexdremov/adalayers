@@ -21,7 +21,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from adalayers.models.ada_layers_classifier import AdaLayersForSequenceClassification
 from adalayers.training.config import Experiment
 
 logger = logging.getLogger(__name__)
@@ -40,11 +39,26 @@ class LightningModel(pl.LightningModule):
         self.batch_size = experiment.optimization.batch_size
         self.batch_size_eval = experiment.optimization.batch_size_eval
         self.num_workers = experiment.optimization.num_workers
+        self.mode = experiment.optimization.mode
 
-        self.collator = transformers.DataCollatorWithPadding(
-            tokenizer, padding="max_length", max_length=tokenizer.model_max_length
-        )
-        self.dataset = dataset.select_columns(["input_ids", "label", "attention_mask"])
+        match self.mode:
+            case "default":
+                collator = transformers.DataCollatorWithPadding(
+                tokenizer, padding="max_length", max_length=tokenizer.model_max_length
+                )
+            case "token_classification":
+                collator = transformers.DataCollatorForTokenClassification(
+                    tokenizer, padding="max_length", max_length=tokenizer.model_max_length
+                )
+
+        self.collator = collator
+
+        self.columns_to_use = ["input_ids", "attention_mask"]
+        if 'label' in dataset.column_names['train']:
+            self.columns_to_use.append("label")
+        if 'labels' in dataset.column_names['train']:
+            self.columns_to_use.append("labels")
+        self.dataset = dataset.select_columns(self.columns_to_use)
 
         self.f1 = torchmetrics.classification.F1Score(
             task="multiclass",
@@ -107,16 +121,14 @@ class LightningModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         output: SequenceClassifierOutput = self(**batch)
 
-        self.acc.update(output.logits, batch["labels"])
-        self.f1.update(output.logits, batch["labels"])
-
         name = "train"
+        self.update_metrics(output.logits, batch["labels"], step=name)
         self.log(f"{name}/loss", output.loss, prog_bar=True, on_step=True)
         self.log(f"{name}/acc", self.acc, prog_bar=True, on_epoch=True)
         self.log(f"{name}/f1", self.f1, prog_bar=True, on_epoch=True)
 
         if (
-            isinstance(self.model, AdaLayersForSequenceClassification)
+            hasattr(self.model, "distribution_normalized")
             and self.print_distribution
             and self.trainer.is_global_zero
         ):
@@ -131,10 +143,8 @@ class LightningModel(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         output = self(**batch)
 
-        self.valid_acc.update(output.logits, batch["labels"])
-        self.valid_f1.update(output.logits, batch["labels"])
-
         name = "val"
+        self.update_metrics(output.logits, batch["labels"], step=name)
         self.log(
             f"{name}/loss", output.loss, prog_bar=True, on_epoch=True, sync_dist=True
         )
@@ -150,13 +160,31 @@ class LightningModel(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         output = self(**batch)
 
-        self.test_acc.update(output.logits, batch["labels"])
-        self.test_f1.update(output.logits, batch["labels"])
-
         name = "test"
+        self.update_metrics(output.logits, batch["labels"], step=name)
         self.log(f"{name}/loss", output.loss, on_epoch=True, sync_dist=True)
         self.log(f"{name}/acc", self.test_acc, on_epoch=True, sync_dist=True)
         self.log(f"{name}/f1", self.test_f1, on_epoch=True, sync_dist=True)
+
+    def update_metrics(self, logits, labels, step='train'):
+        acc, f1 = (self.acc, self.f1)
+        if step == 'val':
+            acc, f1 = (self.valid_acc, self.valid_f1)
+        elif step == 'test':
+            acc, f1 = (self.test_acc, self.test_f1)
+
+        if self.mode == 'default':
+            acc.update(logits, labels)
+            f1.update(logits, labels)
+            return
+
+        logits, labels = logits.view(-1, logits.size(-1)), labels.view(-1)
+        mask_valid = labels != -100
+        logits = logits[mask_valid]
+        labels = labels[mask_valid]
+
+        acc.update(logits, labels)
+        f1.update(logits, labels)
 
     def predict_step(self, batch, batch_idx):
         output = self(**batch)
@@ -170,7 +198,7 @@ class LightningModel(pl.LightningModule):
         logger.info("Train epoch results")
         logger.info(metrics)
         if (
-            isinstance(self.model, AdaLayersForSequenceClassification)
+            hasattr(self.model, "distribution_normalized")
             and self.print_distribution
         ):
             distribution = self.model.distribution_normalized
@@ -227,7 +255,7 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
     early_stop_callback = EarlyStopping(
         monitor=f"val/{experiment.optimization.best_metric}",
         min_delta=0.00,
-        patience=10,
+        patience=experiment.optimization.early_stop_patience,
         verbose=True,
         mode="max",
     )
@@ -240,6 +268,7 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
         log_every_n_steps=15,
         callbacks=[checkpoint_callback, lr_monitor, early_stop_callback],
         strategy=DDPStrategy(find_unused_parameters=True),
+        precision=experiment.optimization.precision
     )
 
     pl_model = LightningModel(model, tokenizer, dataset, experiment)

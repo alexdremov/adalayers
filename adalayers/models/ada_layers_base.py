@@ -22,8 +22,9 @@ class AdaLayersBase(PreTrainedModel):
         self.model = transformers.AutoModel.from_pretrained(config.base_model)
         self.model.eval()
 
-        for param in self.model.parameters():
-            param.requires_grad = False
+        if config.freeze_base_model:
+            for param in self.model.parameters():
+                param.requires_grad = False
 
         self.projectors = nn.ModuleList(
             [
@@ -50,6 +51,11 @@ class AdaLayersBase(PreTrainedModel):
             dropout=config.attention_dropout_prob,
             batch_first=True,
         )
+
+        if config.classes_weights:
+            self.register_buffer("classes_weights", torch.tensor(config.classes_weights), persistent=False)
+        else:
+            self.classes_weights = None
 
         distribution = torch.ones(config.layers_num, 1)
         if config.pick_one_layer_only is not None:
@@ -78,12 +84,10 @@ class AdaLayersBase(PreTrainedModel):
     ):
         assert output_hidden_states is None or True, "Must always output hidden states"
 
-        with torch.inference_mode():
+        with torch.inference_mode() if self.config.freeze_base_model else contextlib.nullcontext():
             outputs = self.model(
                 input_ids,
                 attention_mask=attention_mask,
-                token_type_ids=token_type_ids,
-                position_ids=position_ids,
                 head_mask=head_mask,
                 inputs_embeds=inputs_embeds,
                 output_attentions=output_attentions,

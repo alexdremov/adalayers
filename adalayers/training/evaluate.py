@@ -22,8 +22,13 @@ def dump_wandb_summary_metrics(wandb: Run, results, name, model):
 
 @torch.no_grad()
 def evaluate(experiment: Experiment, model, dataset):
+    columns_to_use = ["input_ids", "attention_mask"]
+    if 'label' in dataset.column_names['train']:
+        columns_to_use.append("label")
+    if 'labels' in dataset.column_names['train']:
+        columns_to_use.append("labels")
     dataloader = torch.utils.data.DataLoader(
-        dataset.select_columns(["input_ids", "label", "attention_mask"]),
+        dataset.select_columns(columns_to_use),
         batch_size=experiment.optimization.batch_size_eval,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),

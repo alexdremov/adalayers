@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from transformers import PretrainedConfig
 
@@ -19,6 +19,8 @@ class AdaLayersBaseConfig(PretrainedConfig):
         alpha_distribution: float = 10.0,
         lambda_distribution_entropy: float = 0.02,
         pick_one_layer_only: Optional[int] = None,
+        freeze_base_model: bool = True,
+        classes_weights: Optional[List[float]] = None,
         **kwargs,
     ):
         self.base_model = base_model
@@ -32,6 +34,8 @@ class AdaLayersBaseConfig(PretrainedConfig):
         self.alpha_distribution = alpha_distribution
         self.lambda_distribution_entropy = lambda_distribution_entropy
         self.pick_one_layer_only = pick_one_layer_only
+        self.freeze_base_model = freeze_base_model
+        self.classes_weights = classes_weights
 
         super().__init__(**kwargs)
 
@@ -55,7 +59,13 @@ class AdaLayersForTokenClassificationConfig(AdaLayersBaseConfig):
     def __init__(
         self,
         num_classes: int = 2,
+        focal_loss_enabled: bool = False,
+        focal_loss_gamma: float = 2.0,
+        focal_loss_alpha: float = 0.25,
         **kwargs
     ):
         self.num_classes = num_classes
+        self.focal_loss_enabled = focal_loss_enabled
+        self.focal_loss_gamma = focal_loss_gamma
+        self.focal_loss_alpha = focal_loss_alpha
         super().__init__(**kwargs)

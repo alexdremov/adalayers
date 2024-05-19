@@ -14,6 +14,9 @@ class OptimizationConfig:
     max_epochs: int = 32
     best_metric: str = "f1"
     lr_patience: int = 5
+    mode: str = "default"
+    early_stop_patience: int = 10
+    precision: Optional[str] = None
 
 
 @dataclass

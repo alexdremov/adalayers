@@ -40,7 +40,7 @@ class AdaLayersForSequenceClassification(AdaLayersBase):
         logits = self.logits(weighted)
 
         if "labels" in kwargs and kwargs['labels'] is not None:
-            loss += F.cross_entropy(logits, kwargs['labels'].view(-1))
+            loss += F.cross_entropy(logits, kwargs['labels'].view(-1), weight=self.classes_weights)
 
         return SequenceClassifierOutput(
             loss=loss,

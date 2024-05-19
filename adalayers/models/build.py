@@ -22,6 +22,10 @@ def build_model(config: Experiment, run):
             model = transformers.AutoModelForSequenceClassification.from_pretrained(
                 **config.model.kwargs
             )
+        case "automodel_token":
+            model = transformers.AutoModelForTokenClassification.from_pretrained(
+                **config.model.kwargs
+            )
         case "automodel_freezed":
             model = transformers.AutoModelForSequenceClassification.from_pretrained(
                 **config.model.kwargs

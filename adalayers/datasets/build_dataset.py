@@ -4,12 +4,14 @@ import logging
 from datasets import DownloadMode
 from transformers import PreTrainedTokenizer
 
+from .utils import tokenize_and_align_labels
+
 logger = logging.getLogger(__name__)
 
 
-def train_val_split(dataset: datasets.Dataset):
+def train_val_split(dataset: datasets.Dataset, stratify_by_column="label"):
     splitted = dataset.train_test_split(
-        test_size=0.1, seed=42, stratify_by_column="label"
+        test_size=0.1, seed=42, stratify_by_column=stratify_by_column
     )
     return dict(train=splitted["train"], val=splitted["test"])
 
@@ -70,6 +72,24 @@ def load_imdb(tokenizer: PreTrainedTokenizer):
     )
 
 
+def load_conll(tokenizer: PreTrainedTokenizer):
+    dataset: datasets.DatasetDict = datasets.load_dataset("eriktks/conll2003")
+
+    def preprocess(batch):
+        batch.update(
+            tokenize_and_align_labels(tokenizer, batch["tokens"], batch["ner_tags"])
+        )
+        return batch
+
+    dataset = dataset.map(preprocess, batched=False)
+    val_train = train_val_split(dataset["train"], stratify_by_column=None)
+    return datasets.DatasetDict(
+        train=val_train["train"],
+        val=val_train["val"],
+        test=dataset["test"],
+    )
+
+
 def build_dataset(name, tokenizer):
     match name:
         case "super_glue_rte":
@@ -78,6 +98,8 @@ def build_dataset(name, tokenizer):
             return load_glue_cola(tokenizer)
         case "imdb":
             return load_imdb(tokenizer)
+        case "conll":
+            return load_conll(tokenizer)
 
     logger.error(f"Unknown dataset {name = }")
     raise RuntimeError
