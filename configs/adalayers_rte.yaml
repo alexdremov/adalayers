@@ -8,14 +8,14 @@ defaults:
 
 optimization:
   max_epochs: 128
-  batch_size: 128
-  batch_size_eval: 128
+  batch_size: 256
+  batch_size_eval: 256
   lr_patience: 10
   best_metric: acc
 
 model:
   kwargs:
-    lambda_distribution_entropy: 0.05
+    lambda_distribution_entropy: 0.001
     alpha_distribution: 256
     attention_heads_num: 8
 

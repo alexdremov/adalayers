@@ -4,7 +4,7 @@ import logging
 from datasets import DownloadMode
 from transformers import PreTrainedTokenizer
 
-from .utils import tokenize_and_align_labels
+from .utils import tokenize_and_align_labels, collapse_tokenized_token_predictions
 
 logger = logging.getLogger(__name__)
 

@@ -17,6 +17,7 @@ class OptimizationConfig:
     mode: str = "default"
     early_stop_patience: int = 10
     precision: Optional[str] = None
+    min_delta: float = 0.0
 
 
 @dataclass

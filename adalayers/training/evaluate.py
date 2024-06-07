@@ -1,5 +1,6 @@
 import torch
 import os
+import gc
 import logging
 
 import wandb
@@ -9,8 +10,9 @@ from tqdm.auto import tqdm
 
 from adalayers.training.config import Experiment
 from adalayers.training.train import LightningModel
+from adalayers.datasets.utils import collapse_tokenized_token_predictions
 
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +24,16 @@ def dump_wandb_summary_metrics(wandb: Run, results, name, model):
 
 @torch.no_grad()
 def evaluate(experiment: Experiment, model, dataset):
-    columns_to_use = ["input_ids", "attention_mask"]
-    if 'label' in dataset.column_names['train']:
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    dataset = dataset.add_column("index", list(range(len(dataset))))
+    columns_to_use = ["input_ids", "attention_mask", "index"]
+    if 'label' in dataset.column_names:
         columns_to_use.append("label")
-    if 'labels' in dataset.column_names['train']:
+    if 'labels' in dataset.column_names:
         columns_to_use.append("labels")
+
     dataloader = torch.utils.data.DataLoader(
         dataset.select_columns(columns_to_use),
         batch_size=experiment.optimization.batch_size_eval,
@@ -40,16 +47,33 @@ def evaluate(experiment: Experiment, model, dataset):
     model = model.to(device).eval()
     labels = []
     predictions = []
-    for batch in tqdm(dataloader):
-        labels += batch["labels"].view(-1).detach().cpu().numpy().tolist()
-        for k in batch:
-            batch[k] = batch[k].to(device)
-        out = model(**batch)
-        predictions += out.logits.argmax(-1).view(-1).detach().cpu().numpy().tolist()
+
+    with torch.inference_mode():
+        for batch in tqdm(dataloader):
+            indexes = batch.pop("index")
+            cur_labels = batch["labels"].view(-1).detach().cpu().numpy().tolist()
+            for k in batch:
+                batch[k] = batch[k].to(device)
+            out = model(**batch)
+            out = out.logits.argmax(-1).detach().cpu()
+            if experiment.optimization.mode == "default":
+                labels += cur_labels
+                predictions += out.view(-1).numpy().tolist()
+            elif experiment.optimization.mode == "token_classification":
+                for index, prediction in zip(indexes, predictions):
+                    labels += dataset[index]['ner_tags']
+                    predictions += collapse_tokenized_token_predictions(dataset[index]['word_ids'], prediction)
+            else:
+                raise NotImplementedError()
 
     return dict(
         acc=accuracy_score(predictions, labels),
         f1=f1_score(predictions, labels, average="macro"),
+        f1_micro=f1_score(predictions, labels, average="micro"),
+        recall=recall_score(predictions, labels, average="macro"),
+        recall_micro=recall_score(predictions, labels, average="micro"),
+        precision=precision_score(predictions, labels, average="macro"),
+        precision_micro=precision_score(predictions, labels, average="micro"),
     )
 
 

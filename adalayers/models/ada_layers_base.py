@@ -1,6 +1,7 @@
 import contextlib
 from typing import Optional, Union, Tuple
 
+import math
 import numpy as np
 
 import torch
@@ -9,9 +10,36 @@ import torch.nn.functional as F
 
 import transformers
 from transformers import PreTrainedModel
-from transformers.modeling_outputs import SequenceClassifierOutput
 
 from adalayers.models.configs import AdaLayersBaseConfig
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 512):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        self.d_model = d_model
+        self.register_buffer('pe', self.make_pe(max_len), persistent=False)
+
+    def make_pe(self, max_len: int):
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, self.d_model, 2) * (-math.log(10000.0) / self.d_model))
+        pe = torch.zeros(max_len, self.d_model)
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        return pe
+
+    def forward(self, x):
+        """
+        Arguments:
+            x: Tensor, shape ``[batch_size, seq_len, embedding_dim]``
+        """
+        seq_len = x.size(1)
+        if seq_len >= len(self.pe):
+            self.pe = self.make_pe(seq_len).to(self.pe.device)
+        x = x + self.pe[:seq_len][None]
+        return self.dropout(x)
+
 
 
 class AdaLayersBase(PreTrainedModel):
@@ -40,7 +68,7 @@ class AdaLayersBase(PreTrainedModel):
             [
                 nn.LayerNorm(
                     normalized_shape=config.project_dim,
-                    elementwise_affine=True
+                    elementwise_affine=False
                 )
                 for _ in range(config.layers_num)
             ]
@@ -50,6 +78,11 @@ class AdaLayersBase(PreTrainedModel):
             num_heads=config.attention_heads_num,
             dropout=config.attention_dropout_prob,
             batch_first=True,
+        )
+        self.pos_emb = PositionalEncoding(
+            d_model=config.project_dim,
+            dropout=config.attention_dropout_prob,
+            max_len=config.layers_num,
         )
 
         if config.classes_weights:
@@ -130,6 +163,8 @@ class AdaLayersBase(PreTrainedModel):
         with context:
             weighted = F.gelu(projected @ distribution).squeeze(-1)
 
+        if self.config.add_pos_embeddings:
+            weighted = self.pos_emb(weighted)
         weighted, _ = self.self_attention(
             weighted, weighted, weighted, key_padding_mask=(attention_mask == 0)
         )

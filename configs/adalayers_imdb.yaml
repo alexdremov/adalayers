@@ -8,8 +8,17 @@ defaults:
 
 optimization:
   max_epochs: 128
-  batch_size: 128
-  batch_size_eval: 128
+  batch_size: 400
+  batch_size_eval: 400
+  precision: "16-mixed"
+  optim_kwargs:
+    lr: 1e-4
+    weight_decay: 0.001
+
+model:
+  kwargs:
+    lambda_distribution_entropy: 0.0
+    alpha_distribution: 64
 
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

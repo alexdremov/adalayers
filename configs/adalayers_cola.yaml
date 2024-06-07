@@ -7,9 +7,12 @@ defaults:
   - _self_
 
 optimization:
-  max_epochs: 128
-  batch_size: 128
-  batch_size_eval: 128
+  max_epochs: 256
+  batch_size: 300
+  batch_size_eval: 300
+  precision: "16-mixed"
+  early_stop_patience: 30
+  lr_patience: 25
 
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

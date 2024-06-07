@@ -28,6 +28,19 @@ def tokenize_and_align_labels(tokenizer, words, tags):
             # Append the adjusted label to the new_labels list
             label_ids.append(label)
 
+    tokenized_inputs['word_ids'] = word_ids
     tokenized_inputs["labels"] = label_ids
-    
+
     return tokenized_inputs
+
+
+def collapse_tokenized_token_predictions(word_ids, predictions):
+    assert len(word_ids) == len(predictions)
+    result = []
+    for word_id, prediction in zip(word_ids, predictions):
+        if word_id is None:
+            continue
+        if len(result) > word_id:
+            continue
+        result.append(prediction)
+    return result

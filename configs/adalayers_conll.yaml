@@ -7,14 +7,25 @@ defaults:
   - _self_
 
 optimization:
-  max_epochs: 256
-  batch_size: 256
-  batch_size_eval: 512
+  max_epochs: 200
+  batch_size: 326
+  batch_size_eval: 326
   mode: token_classification
   early_stop_patience: 20
+  lr_patience: 16
+  precision: "16-mixed"
+  min_delta: 0.001
+  best_metric: "f1_micro"
   optim_kwargs:
-    lr: 8e-5
-    weight_decay: 0.001
+    lr: 1e-4
+    weight_decay: 0.02
+
+model:
+  kwargs:
+    project_dim: 96
+    lambda_distribution_entropy: 0.0
+    alpha_distribution: 64
+    add_pos_embeddings: True
 
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

@@ -76,6 +76,22 @@ class LightningModel(pl.LightningModule):
             average="macro",
         )
 
+        self.f1_micro = torchmetrics.classification.F1Score(
+            task="multiclass",
+            num_classes=experiment.dataset.num_classes,
+            average="micro",
+        )
+        self.valid_f1_micro = torchmetrics.classification.F1Score(
+            task="multiclass",
+            num_classes=experiment.dataset.num_classes,
+            average="micro",
+        )
+        self.test_f1_micro = torchmetrics.classification.F1Score(
+            task="multiclass",
+            num_classes=experiment.dataset.num_classes,
+            average="micro",
+        )
+
         self.acc = torchmetrics.classification.Accuracy(
             task="multiclass", num_classes=experiment.dataset.num_classes
         )
@@ -126,6 +142,7 @@ class LightningModel(pl.LightningModule):
         self.log(f"{name}/loss", output.loss, prog_bar=True, on_step=True)
         self.log(f"{name}/acc", self.acc, prog_bar=True, on_epoch=True)
         self.log(f"{name}/f1", self.f1, prog_bar=True, on_epoch=True)
+        self.log(f"{name}/f1_micro", self.f1_micro, prog_bar=True, on_epoch=True)
 
         if (
             hasattr(self.model, "distribution_normalized")
@@ -154,6 +171,9 @@ class LightningModel(pl.LightningModule):
         self.log(
             f"{name}/f1", self.valid_f1, prog_bar=True, on_epoch=True, sync_dist=True
         )
+        self.log(
+            f"{name}/f1_micro", self.valid_f1_micro, prog_bar=True, on_epoch=True, sync_dist=True
+        )
 
         return output.loss
 
@@ -165,17 +185,19 @@ class LightningModel(pl.LightningModule):
         self.log(f"{name}/loss", output.loss, on_epoch=True, sync_dist=True)
         self.log(f"{name}/acc", self.test_acc, on_epoch=True, sync_dist=True)
         self.log(f"{name}/f1", self.test_f1, on_epoch=True, sync_dist=True)
+        self.log(f"{name}/f1_micro", self.test_f1_micro, on_epoch=True, sync_dist=True)
 
     def update_metrics(self, logits, labels, step='train'):
-        acc, f1 = (self.acc, self.f1)
+        acc, f1, f1_micro = (self.acc, self.f1, self.f1_micro)
         if step == 'val':
-            acc, f1 = (self.valid_acc, self.valid_f1)
+            acc, f1, f1_micro = (self.valid_acc, self.valid_f1, self.valid_f1_micro)
         elif step == 'test':
-            acc, f1 = (self.test_acc, self.test_f1)
+            acc, f1, f1_micro = (self.test_acc, self.test_f1, self.test_f1_micro)
 
         if self.mode == 'default':
             acc.update(logits, labels)
             f1.update(logits, labels)
+            f1_micro.update(logits, labels)
             return
 
         logits, labels = logits.view(-1, logits.size(-1)), labels.view(-1)
@@ -185,13 +207,14 @@ class LightningModel(pl.LightningModule):
 
         acc.update(logits, labels)
         f1.update(logits, labels)
+        f1_micro.update(logits, labels)
 
     def predict_step(self, batch, batch_idx):
         output = self(**batch)
         return output.logits
 
     def on_train_epoch_end(self):
-        metrics = dict(acc=self.acc.compute(), f1=self.f1.compute())
+        metrics = dict(acc=self.acc.compute(), f1=self.f1.compute(), f1_micro=self.f1_micro.compute())
         if not self.trainer.is_global_zero:
             return
 
@@ -206,7 +229,7 @@ class LightningModel(pl.LightningModule):
             logger.info(distribution.detach().cpu().view(-1))
 
     def on_validation_epoch_end(self):
-        metrics = dict(acc=self.valid_acc.compute(), f1=self.valid_f1.compute())
+        metrics = dict(acc=self.valid_acc.compute(), f1=self.valid_f1.compute(), f1_micro=self.valid_f1_micro.compute())
         if not self.trainer.is_global_zero:
             return
         logger.info("Validation epoch results")
@@ -250,11 +273,13 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
         save_weights_only=True,
         verbose=True,
     )
-    lr_monitor = LearningRateMonitor(logging_interval="epoch")
+    lr_monitor = LearningRateMonitor(
+        logging_interval="epoch"
+    )
 
     early_stop_callback = EarlyStopping(
         monitor=f"val/{experiment.optimization.best_metric}",
-        min_delta=0.00,
+        min_delta=experiment.optimization.min_delta,
         patience=experiment.optimization.early_stop_patience,
         verbose=True,
         mode="max",
