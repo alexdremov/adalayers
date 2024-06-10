@@ -82,10 +82,9 @@ def load_conll(tokenizer: PreTrainedTokenizer):
         return batch
 
     dataset = dataset.map(preprocess, batched=False)
-    val_train = train_val_split(dataset["train"], stratify_by_column=None)
     return datasets.DatasetDict(
-        train=val_train["train"],
-        val=val_train["val"],
+        train=dataset["train"],
+        val=dataset["validation"],
         test=dataset["test"],
     )
 

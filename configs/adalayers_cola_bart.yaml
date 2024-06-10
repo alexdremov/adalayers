@@ -1,0 +1,15 @@
+defaults:
+  - adalayers_cola
+  - override model: adalayers_bart
+  - override tokenizer_pretrained: adalayers_bart
+  - _self_
+
+optimization:
+  max_epochs: 256
+  batch_size: 900
+  batch_size_eval: 900
+  early_stop_patience: 18
+  lr_patience: 8
+
+wandb:
+  name: ${cat:"final_bart", ${dataset.name}, ${model.name}}

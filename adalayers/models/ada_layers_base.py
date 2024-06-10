@@ -73,12 +73,6 @@ class AdaLayersBase(PreTrainedModel):
                 for _ in range(config.layers_num)
             ]
         )
-        self.self_attention = nn.MultiheadAttention(
-            embed_dim=config.project_dim,
-            num_heads=config.attention_heads_num,
-            dropout=config.attention_dropout_prob,
-            batch_first=True,
-        )
         self.pos_emb = PositionalEncoding(
             d_model=config.project_dim,
             dropout=config.attention_dropout_prob,
@@ -115,9 +109,12 @@ class AdaLayersBase(PreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
     ):
-        assert output_hidden_states is None or True, "Must always output hidden states"
+        assert output_hidden_states is None or output_hidden_states == True, "Must always output hidden states"
 
         with torch.inference_mode() if self.config.freeze_base_model else contextlib.nullcontext():
+            decoder_input_ids = None
+            if self.config.generate_fake_decoder_input_ids:
+                decoder_input_ids = input_ids[:, :1]
             outputs = self.model(
                 input_ids,
                 attention_mask=attention_mask,
@@ -125,9 +122,10 @@ class AdaLayersBase(PreTrainedModel):
                 inputs_embeds=inputs_embeds,
                 output_attentions=output_attentions,
                 output_hidden_states=True,
+                decoder_input_ids=decoder_input_ids,
             )
 
-        hiddens = outputs.hidden_states
+        hiddens = getattr(outputs, "hidden_states", getattr(outputs, "encoder_hidden_states"))
 
         projected = torch.stack(
             tensors=[
@@ -165,19 +163,11 @@ class AdaLayersBase(PreTrainedModel):
 
         if self.config.add_pos_embeddings:
             weighted = self.pos_emb(weighted)
-        weighted, _ = self.self_attention(
-            weighted, weighted, weighted, key_padding_mask=(attention_mask == 0)
-        )
-        weighted = F.gelu(weighted)
-        weighted = F.dropout(
-            weighted, p=self.config.attention_dropout_prob, training=self.training
-        )
-
         return (
             weighted,
             loss,
-            outputs.hidden_states,
-            outputs.attentions,
+            hiddens,
+            getattr(outputs, "attentions", None),
         )
 
     @property

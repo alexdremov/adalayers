@@ -1,5 +1,6 @@
 import logging
 import os
+import datetime
 
 import lightning as pl
 
@@ -44,11 +45,11 @@ class LightningModel(pl.LightningModule):
         match self.mode:
             case "default":
                 collator = transformers.DataCollatorWithPadding(
-                tokenizer, padding="max_length", max_length=tokenizer.model_max_length
+                tokenizer, padding="longest", max_length=tokenizer.model_max_length
                 )
-            case "token_classification":
+            case "conll_ner":
                 collator = transformers.DataCollatorForTokenClassification(
-                    tokenizer, padding="max_length", max_length=tokenizer.model_max_length
+                    tokenizer, padding="longest", max_length=tokenizer.model_max_length
                 )
 
         self.collator = collator
@@ -290,9 +291,12 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
         logger=wandb_logger,
         max_epochs=experiment.optimization.max_epochs,
         default_root_dir=root_dir,
-        log_every_n_steps=15,
+        log_every_n_steps=2,
         callbacks=[checkpoint_callback, lr_monitor, early_stop_callback],
-        strategy=DDPStrategy(find_unused_parameters=True),
+        strategy=DDPStrategy(
+            find_unused_parameters=True,
+            timeout=datetime.timedelta(seconds=180000),
+        ),
         precision=experiment.optimization.precision
     )
 

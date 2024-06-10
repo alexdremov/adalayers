@@ -1,0 +1,5 @@
+pretrained_model_name_or_path: "facebook/bart-large-cnn"
+tokenize_kwargs:
+  max_length: 1024
+pad_kwargs:
+  max_length: 1024

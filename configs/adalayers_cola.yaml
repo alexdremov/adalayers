@@ -14,5 +14,11 @@ optimization:
   early_stop_patience: 30
   lr_patience: 25
 
+model:
+  kwargs:
+    lambda_distribution_entropy: 0.0
+    alpha_distribution: 64
+    add_pos_embeddings: True
+
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

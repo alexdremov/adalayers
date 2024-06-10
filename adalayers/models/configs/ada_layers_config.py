@@ -22,6 +22,7 @@ class AdaLayersBaseConfig(PretrainedConfig):
         freeze_base_model: bool = True,
         classes_weights: Optional[list[float]] = None,
         add_pos_embeddings: bool = False,
+        generate_fake_decoder_input_ids=False,
         **kwargs,
     ):
         self.base_model = base_model
@@ -38,6 +39,7 @@ class AdaLayersBaseConfig(PretrainedConfig):
         self.freeze_base_model = freeze_base_model
         self.classes_weights = list(classes_weights) if classes_weights is not None else None
         self.add_pos_embeddings = add_pos_embeddings
+        self.generate_fake_decoder_input_ids = generate_fake_decoder_input_ids
 
         super().__init__(**kwargs)
 
@@ -64,10 +66,14 @@ class AdaLayersForTokenClassificationConfig(AdaLayersBaseConfig):
         focal_loss_enabled: bool = False,
         focal_loss_gamma: float = 2.0,
         focal_loss_alpha: float = 0.25,
+        attention_layers_num=1,
+        dim_feedforward=1024,
         **kwargs
     ):
         self.num_classes = num_classes
         self.focal_loss_enabled = focal_loss_enabled
         self.focal_loss_gamma = focal_loss_gamma
         self.focal_loss_alpha = focal_loss_alpha
+        self.attention_layers_num = attention_layers_num
+        self.dim_feedforward = dim_feedforward
         super().__init__(**kwargs)

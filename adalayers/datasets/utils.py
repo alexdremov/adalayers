@@ -1,5 +1,9 @@
 def tokenize_and_align_labels(tokenizer, words, tags):
-    tokenized_inputs = tokenizer(words, truncation=True, is_split_into_words=True)
+    tokenized_inputs = tokenizer(
+        words,
+        truncation=True,
+        is_split_into_words=True
+    )
     word_ids = tokenized_inputs.word_ids()
 
     current_word = None
@@ -9,7 +13,7 @@ def tokenize_and_align_labels(tokenizer, words, tags):
             # Start of a new word/entity
             current_word = word_id
 
-            # Assign -100 to labels for special tokens, else use the word's label
+            #  Assign -100 to labels for special tokens, else use the word's label
             label = -100 if word_id is None else tags[word_id]
 
             # Append the adjusted label to the new_labels list
@@ -28,14 +32,12 @@ def tokenize_and_align_labels(tokenizer, words, tags):
             # Append the adjusted label to the new_labels list
             label_ids.append(label)
 
-    tokenized_inputs['word_ids'] = word_ids
-    tokenized_inputs["labels"] = label_ids
-
+    tokenized_inputs['word_ids'] = list(word_ids)
+    tokenized_inputs["labels"] = list(label_ids)
     return tokenized_inputs
 
 
 def collapse_tokenized_token_predictions(word_ids, predictions):
-    assert len(word_ids) == len(predictions)
     result = []
     for word_id, prediction in zip(word_ids, predictions):
         if word_id is None:

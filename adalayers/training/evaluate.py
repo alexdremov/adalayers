@@ -11,6 +11,7 @@ from tqdm.auto import tqdm
 from adalayers.training.config import Experiment
 from adalayers.training.train import LightningModel
 from adalayers.datasets.utils import collapse_tokenized_token_predictions
+from adalayers.datasets.conlleval import ids_to_tags, evaluate as conll_evaluate
 
 from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
 
@@ -50,7 +51,7 @@ def evaluate(experiment: Experiment, model, dataset):
 
     with torch.inference_mode():
         for batch in tqdm(dataloader):
-            indexes = batch.pop("index")
+            indexes = batch.pop("index").detach().cpu().numpy().tolist()
             cur_labels = batch["labels"].view(-1).detach().cpu().numpy().tolist()
             for k in batch:
                 batch[k] = batch[k].to(device)
@@ -59,22 +60,36 @@ def evaluate(experiment: Experiment, model, dataset):
             if experiment.optimization.mode == "default":
                 labels += cur_labels
                 predictions += out.view(-1).numpy().tolist()
-            elif experiment.optimization.mode == "token_classification":
-                for index, prediction in zip(indexes, predictions):
-                    labels += dataset[index]['ner_tags']
-                    predictions += collapse_tokenized_token_predictions(dataset[index]['word_ids'], prediction)
+            elif experiment.optimization.mode == "conll_ner":
+                for index, prediction in zip(indexes, out.numpy().tolist()):
+                    labels += ids_to_tags(dataset[index]['ner_tags'])
+                    predictions += ids_to_tags(
+                        collapse_tokenized_token_predictions(dataset[index]['word_ids'], prediction)
+                    )
             else:
                 raise NotImplementedError()
 
-    return dict(
-        acc=accuracy_score(predictions, labels),
-        f1=f1_score(predictions, labels, average="macro"),
-        f1_micro=f1_score(predictions, labels, average="micro"),
-        recall=recall_score(predictions, labels, average="macro"),
-        recall_micro=recall_score(predictions, labels, average="micro"),
-        precision=precision_score(predictions, labels, average="macro"),
-        precision_micro=precision_score(predictions, labels, average="micro"),
-    )
+    if experiment.optimization.mode == "default":
+        return dict(
+            acc=accuracy_score(labels, predictions, ),
+            f1=f1_score(labels, predictions, average="macro"),
+            f1_micro=f1_score(labels, predictions, average="micro"),
+            recall=recall_score(labels, predictions, average="macro"),
+            recall_micro=recall_score(labels, predictions, average="micro"),
+            precision=precision_score(labels, predictions, average="macro"),
+            precision_micro=precision_score(labels, predictions, average="micro"),
+        )
+    elif experiment.optimization.mode == "conll_ner":
+        prec, rec, f1 = conll_evaluate(labels, predictions)
+        return dict(
+            acc=accuracy_score(labels, predictions),
+            f1_macro=f1_score(labels, predictions, average="macro"),
+            precision=prec,
+            recall=rec,
+            f1=f1,
+        )
+    else:
+        raise NotImplementedError()
 
 
 def save_wandb_model(run, experiment, directory, name, metrics):

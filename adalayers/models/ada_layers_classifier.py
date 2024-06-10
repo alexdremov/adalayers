@@ -1,14 +1,9 @@
-import contextlib
-from typing import Optional, Union, Tuple
-
-import numpy as np
+from typing import Union, Tuple, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import transformers
-from transformers import PreTrainedModel
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from adalayers.models.configs import AdaLayersForSequenceClassificationConfig
@@ -24,9 +19,16 @@ class AdaLayersForSequenceClassification(AdaLayersBase):
             in_features=config.project_dim,
             out_features=config.num_classes
         )
+        self.self_attention = nn.MultiheadAttention(
+            embed_dim=config.project_dim,
+            num_heads=config.attention_heads_num,
+            dropout=config.attention_dropout_prob,
+            batch_first=True,
+        )
 
     def forward(
         self,
+        attention_mask: Optional[torch.FloatTensor] = None,
         *args,
         **kwargs
     ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
@@ -35,8 +37,15 @@ class AdaLayersForSequenceClassification(AdaLayersBase):
             loss,
             hidden_states,
             attentions,
-        ) = super().forward(*args, **kwargs)
-        weighted = weighted.mean(-2)
+        ) = super().forward(*args, **kwargs, attention_mask=attention_mask)
+        weighted, _ = self.self_attention(
+            weighted, weighted, weighted, key_padding_mask=(attention_mask == 0)
+        )
+        weighted = F.gelu(weighted)
+        weighted = F.dropout(
+            weighted, p=self.config.attention_dropout_prob, training=self.training
+        )
+        weighted = (weighted * attention_mask.unsqueeze(-1)).sum(-2) / attention_mask.sum(-1, keepdim=True)
         logits = self.logits(weighted)
 
         if "labels" in kwargs and kwargs['labels'] is not None:

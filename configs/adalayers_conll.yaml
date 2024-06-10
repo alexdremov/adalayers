@@ -7,25 +7,30 @@ defaults:
   - _self_
 
 optimization:
-  max_epochs: 200
-  batch_size: 326
-  batch_size_eval: 326
-  mode: token_classification
-  early_stop_patience: 20
-  lr_patience: 16
+  num_workers: 0
+  max_epochs: 256
+  batch_size: 356
+  batch_size_eval: 356
+  mode: conll_ner
+  early_stop_patience: 16
+  lr_patience: 8
   precision: "16-mixed"
   min_delta: 0.001
-  best_metric: "f1_micro"
+  best_metric: "f1"
   optim_kwargs:
     lr: 1e-4
-    weight_decay: 0.02
+    weight_decay: 0.0
 
 model:
   kwargs:
-    project_dim: 96
+    project_dim: 256
     lambda_distribution_entropy: 0.0
     alpha_distribution: 64
     add_pos_embeddings: True
+    attention_heads_num: 8
+    attention_dropout_prob: 0.0
+    attention_layers_num: 2
+    dim_feedforward: 1024
 
 wandb:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

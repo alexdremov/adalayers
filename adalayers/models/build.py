@@ -1,4 +1,5 @@
 from safetensors.torch import load_model
+import functools
 import transformers
 import os
 import logging
@@ -52,5 +53,28 @@ def build_model(config: Experiment, run):
     return model
 
 
+class WrappedTokenizer:
+    def __init__(self, tokenizer, call_kwargs, pad_kwargs):
+        self.tokenizer = tokenizer
+        self.call_kwargs = call_kwargs
+        self.pad_kwargs = pad_kwargs
+
+    def __call__(self, *args, **kwargs):
+        return self.tokenizer(*args, **{**self.call_kwargs, **kwargs})
+
+    def pad(self, *args, **kwargs):
+        return self.tokenizer.pad(*args, **{**self.pad_kwargs, **kwargs})
+
+    def __getattr__(self, name):
+        return getattr(self.tokenizer, name)
+
+
 def build_tokenizer(config: Experiment):
-    return transformers.AutoTokenizer.from_pretrained(**config.tokenizer_pretrained)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        **{k: v for k, v in config.tokenizer_pretrained.items() if k not in ('tokenize_kwargs', 'pad_kwargs')}
+    )
+    return WrappedTokenizer(
+        tokenizer=tokenizer,
+        call_kwargs=config.tokenizer_pretrained.get('tokenize_kwargs', {}),
+        pad_kwargs=config.tokenizer_pretrained.get('pad_kwargs', {})
+    )

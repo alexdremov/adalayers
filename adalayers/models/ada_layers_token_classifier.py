@@ -1,4 +1,4 @@
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -19,9 +19,23 @@ class AdaLayersForTokenClassification(AdaLayersBase):
             in_features=config.project_dim,
             out_features=config.num_classes
         )
+        self.encoder_layers = nn.ModuleList()
+        for _ in range(self.config.attention_layers_num):
+            self.encoder_layers.append(
+                nn.TransformerEncoderLayer(
+                    d_model=config.project_dim,
+                    nhead=config.attention_heads_num,
+                    dropout=config.attention_dropout_prob,
+                    dim_feedforward=self.config.dim_feedforward,
+                    batch_first=True,
+                    activation="gelu",
+                    norm_first=True,
+                )
+            )
 
     def forward(
         self,
+        attention_mask: Optional[torch.FloatTensor] = None,
         *args,
         **kwargs
     ) -> Union[Tuple[torch.Tensor], TokenClassifierOutput]:
@@ -30,7 +44,13 @@ class AdaLayersForTokenClassification(AdaLayersBase):
             loss,
             hidden_states,
             attentions,
-        ) = super().forward(*args, **kwargs)
+        ) = super().forward(*args, **kwargs, attention_mask=attention_mask)
+        key_padding_mask=(attention_mask == 0)
+        for module in self.encoder_layers:
+            weighted = module(weighted, src_key_padding_mask=key_padding_mask)
+        weighted = F.dropout(
+            weighted, p=self.config.attention_dropout_prob, training=self.training
+        )
         logits = self.logits(weighted)
 
         if "labels" in kwargs and kwargs['labels'] is not None:
