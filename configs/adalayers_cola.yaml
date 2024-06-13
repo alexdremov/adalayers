@@ -21,4 +21,4 @@ model:
     add_pos_embeddings: True
 
 wandb:
-  name: ${cat:"final", ${dataset.name}, ${model.name}}
+  name: ${cat:"diploma", ${dataset.name}, ${model.name}}

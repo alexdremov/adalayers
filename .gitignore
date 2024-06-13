@@ -6,7 +6,7 @@ outputs
 .vscode
 .history
 artifacts
-adalayers_distribution.png
-adalayers_distribution.svg
-baselines_compare.png
-baselines_compare.svg
+*/**/*.png
+*/**/*.svg
+*/**/*.jsonl
+predictions

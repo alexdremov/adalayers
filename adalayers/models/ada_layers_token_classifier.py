@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torchcrf import CRF
+
 from transformers.modeling_outputs import TokenClassifierOutput
 
 from adalayers.models.configs import AdaLayersForTokenClassificationConfig
@@ -20,6 +22,13 @@ class AdaLayersForTokenClassification(AdaLayersBase):
             out_features=config.num_classes
         )
         self.encoder_layers = nn.ModuleList()
+
+        self.crf = None
+        if self.config.use_crf:
+            self.crf = CRF(
+                num_tags=config.num_classes,
+                batch_first=True,
+            )
         for _ in range(self.config.attention_layers_num):
             self.encoder_layers.append(
                 nn.TransformerEncoderLayer(
@@ -54,18 +63,31 @@ class AdaLayersForTokenClassification(AdaLayersBase):
         logits = self.logits(weighted)
 
         if "labels" in kwargs and kwargs['labels'] is not None:
-            ce_loss = F.cross_entropy(
-                input=logits.view(-1, logits.size(-1)),
-                target=kwargs['labels'].view(-1),
-                reduction='none' if self.config.focal_loss_enabled else 'mean',
-                ignore_index=-100,
-                weight=self.classes_weights,
-            )
-            if self.config.focal_loss_enabled:
-                pt = torch.exp(-ce_loss)
-                alpha, gamma = self.config.focal_loss_alpha, self.config.focal_loss_gamma
-                ce_loss = (alpha * (1-pt)**gamma * ce_loss).mean()
-            loss += ce_loss
+            if self.config.use_crf:
+                loss -= self.crf.forward(
+                    emissions=logits,
+                    tags=kwargs['labels'] * (kwargs['labels'] > 0),
+                    mask=attention_mask == 1,
+                    reduction='none' if self.config.focal_loss_enabled else 'mean',
+                )
+            else:
+                ce_loss = F.cross_entropy(
+                    input=logits.view(-1, logits.size(-1)),
+                    target=kwargs['labels'].view(-1),
+                    reduction='none' if self.config.focal_loss_enabled else 'mean',
+                    ignore_index=-100,
+                    weight=self.classes_weights,
+                )
+                if self.config.focal_loss_enabled:
+                    pt = torch.exp(-ce_loss)
+                    alpha, gamma = self.config.focal_loss_alpha, self.config.focal_loss_gamma
+                    ce_loss = (alpha * (1-pt)**gamma * ce_loss).mean()
+                loss += ce_loss
+
+        if self.config.use_crf:
+            device = logits.device
+            logits = torch.as_tensor(self.crf.decode(emissions=logits, mask=attention_mask == 1)).to(device)
+            logits = F.one_hot(logits, num_classes=self.num_classes)
 
         return TokenClassifierOutput(
             loss=loss,

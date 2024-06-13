@@ -8,8 +8,16 @@ optimization:
   max_epochs: 256
   batch_size: 900
   batch_size_eval: 900
-  early_stop_patience: 18
-  lr_patience: 8
+  early_stop_patience: 32
+  lr_patience: 16
+
+model:
+  kwargs:
+    project_dim: 64
+    alpha_distribution: 64
+    add_pos_embeddings: True
+    attention_heads_num: 16
+    attention_dropout_prob: 0.1
 
 wandb:
-  name: ${cat:"final_bart", ${dataset.name}, ${model.name}}
+  name: ${cat:"diploma_bart", ${dataset.name}, ${model.name}}

@@ -19,13 +19,12 @@ model:
   kwargs:
     project_dim: 256
     lambda_distribution_entropy: 0.0
-    alpha_distribution: 64
+    alpha_distribution: 96
     add_pos_embeddings: True
     attention_heads_num: 16
-    attention_dropout_prob: 0.2
+    attention_dropout_prob: 0.1
     attention_layers_num: 2
     dim_feedforward: 1024
-    classes_weights: [0.0292, 0.12183, 0.11771, 0.12196, 0.11923, 0.1215697, 0.121895, 0.123348, 0.1232325]
 
 wandb:
-  name: ${cat:"final_bart", ${dataset.name}, ${model.name}}
+  name: ${cat:"diploma_bart", ${dataset.name}, ${model.name}}

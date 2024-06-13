@@ -1,3 +1,4 @@
+import json
 import torch
 import os
 import gc
@@ -24,7 +25,7 @@ def dump_wandb_summary_metrics(wandb: Run, results, name, model):
 
 
 @torch.no_grad()
-def evaluate(experiment: Experiment, model, dataset):
+def evaluate(experiment: Experiment, model, dataset, dump_file=None):
     torch.cuda.empty_cache()
     gc.collect()
 
@@ -49,6 +50,10 @@ def evaluate(experiment: Experiment, model, dataset):
     labels = []
     predictions = []
 
+    labels_by_rows = []
+    predictions_by_rows = []
+    logits = []
+
     with torch.inference_mode():
         for batch in tqdm(dataloader):
             indexes = batch.pop("index").detach().cpu().numpy().tolist()
@@ -56,18 +61,32 @@ def evaluate(experiment: Experiment, model, dataset):
             for k in batch:
                 batch[k] = batch[k].to(device)
             out = model(**batch)
+            logits += out.logits.detach().cpu().numpy().tolist()
             out = out.logits.argmax(-1).detach().cpu()
             if experiment.optimization.mode == "default":
+                labels_by_rows += cur_labels
+                predictions_by_rows += out.view(-1).numpy().tolist()
                 labels += cur_labels
                 predictions += out.view(-1).numpy().tolist()
             elif experiment.optimization.mode == "conll_ner":
                 for index, prediction in zip(indexes, out.numpy().tolist()):
-                    labels += ids_to_tags(dataset[index]['ner_tags'])
-                    predictions += ids_to_tags(
-                        collapse_tokenized_token_predictions(dataset[index]['word_ids'], prediction)
+                    labels_by_rows.append(ids_to_tags(dataset[index]['ner_tags']))
+                    predictions_by_rows.append(
+                        ids_to_tags(
+                            collapse_tokenized_token_predictions(dataset[index]['word_ids'], prediction)
+                        )
                     )
+                    labels += labels_by_rows[-1]
+                    predictions += predictions_by_rows[-1]
             else:
                 raise NotImplementedError()
+
+    if dump_file:
+        with open(dump_file, "w") as f:
+            f.writelines(
+                json.dumps(dict(label=label, prediction=prediction, data=data, logits=logit)) + '\n'
+                for label, prediction, data, logit in zip(tqdm(labels_by_rows), predictions_by_rows, dataset, logits)
+            )
 
     if experiment.optimization.mode == "default":
         return dict(
@@ -109,7 +128,7 @@ def save_wandb_model(run, experiment, directory, name, metrics):
 
 
 def eval_and_save(
-    experiment,
+    experiment: Experiment,
     best_model_path,
     last_model_path,
     dataset,
@@ -124,8 +143,21 @@ def eval_and_save(
     model = pl_model.model
     torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_last.pt"))
     model.save_pretrained(os.path.join(res_dir, "model_last"))
-    val_res = evaluate(experiment, pl_model, dataset["val"])
-    test_res = evaluate(experiment, pl_model, dataset["test"])
+
+    save_data = experiment.dataset.save_eval_data
+
+    val_res = evaluate(
+        experiment=experiment,
+        model=pl_model,
+        dataset=dataset["val"],
+        dump_file='last_eval.jsonl' if save_data else None
+    )
+    test_res = evaluate(
+        experiment=experiment,
+        model=pl_model,
+        dataset=dataset["test"],
+        dump_file='last_test.jsonl' if save_data else None
+    )
 
     logger.info(f"val metrics for last: {val_res}")
     logger.info(f"test metrics for last: {test_res}")
@@ -150,8 +182,18 @@ def eval_and_save(
     torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_best.pt"))
     model.save_pretrained(os.path.join(res_dir, "model_best"))
 
-    val_res = evaluate(experiment, pl_model, dataset["val"])
-    test_res = evaluate(experiment, pl_model, dataset["test"])
+    val_res = evaluate(
+        experiment=experiment,
+        model=pl_model,
+        dataset=dataset["val"],
+        dump_file='best_eval.jsonl' if save_data else None
+    )
+    test_res = evaluate(
+        experiment=experiment,
+        model=pl_model,
+        dataset=dataset["test"],
+        dump_file='best_test.jsonl' if save_data else None
+    )
 
     logger.info(f"val metrics for best: {val_res}")
     logger.info(f"test metrics for best: {test_res}")

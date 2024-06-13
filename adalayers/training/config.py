@@ -38,6 +38,7 @@ class WandbConfig:
 class DatasetConfig:
     name: str = MISSING
     num_classes: int = 2
+    save_eval_data: bool = False
 
 
 @dataclass

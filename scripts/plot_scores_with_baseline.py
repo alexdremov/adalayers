@@ -7,18 +7,25 @@ font = {
 }
 matplotlib.rc('font', **font)
 
-baseline_layers = np.array([
-    19, 20, 21, 22, 23, 24
-])
-baseline_scores = [
-    91.30, 90.00, 89.71, 90.01, 85.09, 85.09
+baseline_data = [
+    (-1, 0.85088),
+    (-2, 0.83324),
+    (-3, 0.90072),
+    (-4, 0.89708),
+    (-5, 0.89768),
+    (-6, 0.91300),
+    (-7, 0.89572),
+    (-8, 0.89484),
 ]
+
+baseline_layers = np.array([25 + layer for layer, _ in baseline_data])
+baseline_scores = [score * 100 for _, score in baseline_data]
 plt.figure(figsize=(10, 5))
 plt.plot(
     baseline_layers,
     baseline_scores,
     label="базовые решения",
-    marker='o',
+    marker='x',
     linestyle='dotted',
     markersize=12,
     linewidth=4,

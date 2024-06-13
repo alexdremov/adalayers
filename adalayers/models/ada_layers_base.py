@@ -1,4 +1,5 @@
 import contextlib
+import functools
 from typing import Optional, Union, Tuple
 
 import math
@@ -47,12 +48,13 @@ class AdaLayersBase(PreTrainedModel):
 
     def __init__(self, config: AdaLayersBaseConfig):
         super().__init__(config)
-        self.model = transformers.AutoModel.from_pretrained(config.base_model)
-        self.model.eval()
+        model = transformers.AutoModel.from_pretrained(config.base_model)
+        model.eval()
 
         if config.freeze_base_model:
-            for param in self.model.parameters():
+            for param in model.parameters():
                 param.requires_grad = False
+        self.model = model
 
         self.projectors = nn.ModuleList(
             [
@@ -112,9 +114,9 @@ class AdaLayersBase(PreTrainedModel):
         assert output_hidden_states is None or output_hidden_states == True, "Must always output hidden states"
 
         with torch.inference_mode() if self.config.freeze_base_model else contextlib.nullcontext():
-            decoder_input_ids = None
+            decoder_input_ids = {}
             if self.config.generate_fake_decoder_input_ids:
-                decoder_input_ids = input_ids[:, :1]
+                decoder_input_ids['decoder_input_ids'] = input_ids[:, :1]
             outputs = self.model(
                 input_ids,
                 attention_mask=attention_mask,
@@ -122,14 +124,14 @@ class AdaLayersBase(PreTrainedModel):
                 inputs_embeds=inputs_embeds,
                 output_attentions=output_attentions,
                 output_hidden_states=True,
-                decoder_input_ids=decoder_input_ids,
+                **decoder_input_ids,
             )
 
-        hiddens = getattr(outputs, "hidden_states", getattr(outputs, "encoder_hidden_states"))
+        hiddens = getattr(outputs, "hidden_states", getattr(outputs, "encoder_hidden_states", None))
 
         projected = torch.stack(
             tensors=[
-                norm(proj(F.gelu(hidden)))
+                norm(proj(hidden))
                 for proj, norm, hidden in zip(self.projectors, self.norms, hiddens)
             ],
             dim=-1,

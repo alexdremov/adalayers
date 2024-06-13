@@ -1,0 +1,28 @@
+defaults:
+  - model: pretrained_ner
+  - optimization: adam
+  - tokenizer_pretrained: pretrained_ner
+  - dataset: conll
+  - hydra: common
+  - _self_
+
+optimization:
+  num_workers: 4
+  max_epochs: 1
+  batch_size: 256
+  batch_size_eval: 256
+  mode: conll_ner
+  early_stop_patience: 32
+  lr_patience: 16
+  precision: "16-mixed"
+  min_delta: 0.001
+  best_metric: "f1"
+  optim_kwargs:
+    lr: 1e-4
+    weight_decay: 0.001
+
+dataset:
+  save_eval_data: True
+
+wandb:
+  name: ${cat:"pretrained", ${dataset.name}, ${model.name}}

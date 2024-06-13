@@ -68,6 +68,7 @@ class AdaLayersForTokenClassificationConfig(AdaLayersBaseConfig):
         focal_loss_alpha: float = 0.25,
         attention_layers_num=1,
         dim_feedforward=1024,
+        use_crf= False,
         **kwargs
     ):
         self.num_classes = num_classes
@@ -76,4 +77,5 @@ class AdaLayersForTokenClassificationConfig(AdaLayersBaseConfig):
         self.focal_loss_alpha = focal_loss_alpha
         self.attention_layers_num = attention_layers_num
         self.dim_feedforward = dim_feedforward
+        self.use_crf = use_crf
         super().__init__(**kwargs)

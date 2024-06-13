@@ -273,6 +273,8 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
         mode="max",
         save_weights_only=True,
         verbose=True,
+        save_last=False,
+        save_top_k=1,
     )
     lr_monitor = LearningRateMonitor(
         logging_interval="epoch"

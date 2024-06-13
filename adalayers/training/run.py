@@ -56,7 +56,7 @@ def process(experiment: Experiment, res_dir: str):
     )
     logger.info(experiment_resolved)
     wandb_logger = WandbLogger(
-        log_model="all",
+        log_model=True,
         save_dir=res_dir,
         project="adalayers",
         config=experiment_resolved,
@@ -71,7 +71,6 @@ def process(experiment: Experiment, res_dir: str):
     tokenizer = build_tokenizer(experiment)
     dataset = build_dataset(experiment.dataset.name, tokenizer)
 
-    wandb_logger.watch(model)
     for step in ["train", "val", "test"]:
         wandb_logger.experiment.define_metric(
             f"{step}/loss_epoch", goal="minimize", summary="min,last"
