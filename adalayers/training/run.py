@@ -105,8 +105,10 @@ def process(experiment: Experiment, res_dir: str):
             wandb_logger=wandb_logger,
         )
     torch.distributed.barrier()
-    wandb_logger.finalize(status="success")
-
+    try:
+        wandb_logger.finalize(status="success")
+    except Exception as e:
+        logger.error(e)
 
 OmegaConf.register_new_resolver("cat", lambda *x: " ".join(map(str, x)))
 

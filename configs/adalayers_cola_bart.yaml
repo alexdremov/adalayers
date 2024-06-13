@@ -14,7 +14,7 @@ optimization:
 model:
   kwargs:
     project_dim: 64
-    alpha_distribution: 64
+    alpha_distribution: 80
     add_pos_embeddings: True
     attention_heads_num: 16
     attention_dropout_prob: 0.1
