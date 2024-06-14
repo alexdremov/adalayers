@@ -18,6 +18,9 @@ model:
   name: adalayers_token
   kwargs:
     attention_heads_num: 16
+    distribution_cutoff: 0.005
+    lambda_distribution_entropy: 0.001
+    alpha_distribution: 128
 
 wandb:
   name: ${cat:"diploma_bart", ${dataset.name}, ${model.name}}
