@@ -7,12 +7,12 @@ defaults:
 optimization:
   max_epochs: 128
   batch_size: 196
-  batch_size_eval: 196
+  batch_size_eval: 128
 
 model:
   kwargs:
     lambda_distribution_entropy: 0.0
-    alpha_distribution: 96
+    alpha_distribution: 70
     attention_dropout_prob: 0.005
 
 wandb:

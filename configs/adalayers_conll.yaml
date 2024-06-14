@@ -24,13 +24,14 @@ optimization:
 model:
   kwargs:
     project_dim: 256
-    lambda_distribution_entropy: 0.005
-    alpha_distribution: 200
+    lambda_distribution_entropy: 0.001
+    alpha_distribution: 128
     add_pos_embeddings: True
     attention_heads_num: 8
     attention_dropout_prob: 0.1
-    attention_layers_num: 3
+    attention_layers_num: 2
     dim_feedforward: 1024
+    distribution_cutoff: 0.005
 
 wandb:
   name: ${cat:"diploma", ${dataset.name}, ${model.name}}
