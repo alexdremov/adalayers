@@ -131,7 +131,7 @@ class AdaLayersBase(PreTrainedModel):
 
         projected = torch.stack(
             tensors=[
-                norm(proj(hidden))
+                norm(proj(F.gelu(hidden)))
                 for proj, norm, hidden in zip(self.projectors, self.norms, hiddens)
             ],
             dim=-1,
@@ -172,9 +172,8 @@ class AdaLayersBase(PreTrainedModel):
             getattr(outputs, "attentions", None),
         )
 
-    @property
-    def distribution_normalized(self):
-        distribution = self.distribution
+    def _distribution_normalized(self, vector):
+        distribution = vector
         if self.config.topk_distribution is not None:
             _, indices_exclude = torch.topk(
                 self.distribution,
@@ -184,3 +183,14 @@ class AdaLayersBase(PreTrainedModel):
             )
             distribution[indices_exclude] = float("-inf")
         return F.softmax(distribution * self.config.alpha_distribution, dim=0)
+
+    @property
+    def distribution_normalized(self):
+        distribution = self._distribution_normalized(self.distribution)
+        if not np.isclose(self.config.distribution_cutoff, 0):
+            mask = distribution <= self.config.distribution_cutoff
+            exclude = torch.where(mask, distribution, 0)
+            if mask.sum().item() > 0:
+                distribution = (distribution - exclude)
+                distribution = distribution / distribution.sum()
+        return distribution

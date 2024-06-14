@@ -23,6 +23,7 @@ class AdaLayersBaseConfig(PretrainedConfig):
         classes_weights: Optional[list[float]] = None,
         add_pos_embeddings: bool = False,
         generate_fake_decoder_input_ids=False,
+        distribution_cutoff = 0.0,
         **kwargs,
     ):
         self.base_model = base_model
@@ -40,6 +41,7 @@ class AdaLayersBaseConfig(PretrainedConfig):
         self.classes_weights = list(classes_weights) if classes_weights is not None else None
         self.add_pos_embeddings = add_pos_embeddings
         self.generate_fake_decoder_input_ids = generate_fake_decoder_input_ids
+        self.distribution_cutoff = distribution_cutoff
 
         super().__init__(**kwargs)
 

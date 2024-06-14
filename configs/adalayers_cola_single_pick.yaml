@@ -1,0 +1,14 @@
+defaults:
+  - adalayers_cola
+  - _self_
+
+optimization:
+  early_stop_patience: 64
+  lr_patience: 26
+
+model:
+  kwargs:
+    pick_one_layer_only: -1
+
+wandb:
+  name: ${cat:"diploma_pick", ${model.kwargs.pick_one_layer_only}, ${dataset.name}, ${model.name}}

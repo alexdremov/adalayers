@@ -19,6 +19,7 @@ model:
   kwargs:
     lambda_distribution_entropy: 0.0
     alpha_distribution: 96
+    distribution_cutoff: 0.005
 
 wandb:
   name: ${cat:"diploma", ${dataset.name}, ${model.name}}

@@ -1,0 +1,10 @@
+defaults:
+  - adalayers_conll
+  - _self_
+
+model:
+  kwargs:
+    pick_one_layer_only: -1
+
+wandb:
+  name: ${cat:"diploma_pick", ${model.kwargs.pick_one_layer_only}, ${dataset.name}, ${model.name}}
