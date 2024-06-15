@@ -1,0 +1,42 @@
+{
+  "_name_or_path": "/Users/alexdremov/DocumentsLocal/StudyLocal/diploma/adalayers/scripts/artifacts/diploma_conll_adalayers_token_model_best:v7",
+  "add_pos_embeddings": true,
+  "alpha_distribution": 128,
+  "architectures": [
+    "AdaLayersForTokenClassification"
+  ],
+  "attention_dropout_prob": 0.2,
+  "attention_heads_num": 8,
+  "attention_layers_num": 1,
+  "base_model": "FacebookAI/roberta-large",
+  "classes_weights": [
+    0.0292,
+    0.12183,
+    0.11771,
+    0.12196,
+    0.11923,
+    0.1215697,
+    0.121895,
+    0.123348,
+    0.1232325
+  ],
+  "dim_feedforward": 2048,
+  "distribution_cutoff": 0.01,
+  "focal_loss_alpha": 0.25,
+  "focal_loss_enabled": false,
+  "focal_loss_gamma": 2.0,
+  "freeze_base_model": true,
+  "freeze_distribution": false,
+  "generate_fake_decoder_input_ids": false,
+  "lambda_distribution_entropy": 0.001,
+  "layer_in_dim": 1024,
+  "layers_num": 24,
+  "model_type": "ada_layers_classifier",
+  "num_classes": 9,
+  "pick_one_layer_only": null,
+  "project_dim": 128,
+  "topk_distribution": null,
+  "torch_dtype": "float32",
+  "transformers_version": "4.41.2",
+  "use_crf": false
+}

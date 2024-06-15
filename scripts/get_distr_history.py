@@ -1,5 +1,6 @@
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.ticker as plticker
 import seaborn as sns
 
 from final_info import (
@@ -30,7 +31,11 @@ def get_info(name, run):
         sns.lineplot(x=steps, y=distributions[column], linestyle=['solid', 'dotted', 'dashed'][i % 3])
 
     plt.xlabel("Шаг")
-    plt.ylabel("Величина $\\tilde{{p}}_i$")
+    plt.ylabel("Величина \\$\\tilde{p}_i\\$")
+
+    loc = plticker.MultipleLocator(base=0.1)
+    plt.gca().yaxis.set_major_locator(loc)
+    plt.tight_layout()
 
     plt.savefig(f'distrs_history/{name}_history.svg', transparent=True)
     plt.savefig(f'distrs_history/{name}_history.png', transparent=True)

@@ -2,6 +2,12 @@ import wandb
 import wandb.apis
 import wandb.sdk
 
+import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
+plt.rcParams['xtick.major.pad'] = '18'
+plt.rcParams['ytick.major.pad'] = '12'
+plt.rcParams['axes.labelpad'] = '40'
+
 api = wandb.Api(
     overrides=dict(
         base_url='https://api.wandb.ai',
@@ -69,14 +75,14 @@ cola_bart = make_info_from_run(
 
 conll = make_info_from_run(
     name='conll',
-    run_name="w2923tjk",
-    model_name='diploma_conll_adalayers_token_model_best:v1',
+    run_name="tjluj296",
+    model_name='diploma_conll_adalayers_token_model_best:v7',
     metric_name='f1',
 )
 conll_bart = make_info_from_run(
     name='conll_bart',
-    run_name="bozuqhbj",
-    model_name='diploma_bart_conll_adalayers_token_model_best:v0',
+    run_name="68c9mjbd",
+    model_name='diploma_bart_conll_adalayers_token_model_best:v1',
     metric_name='f1',
 )
 
@@ -92,3 +98,7 @@ all_entities = [
 all_entities_mapping = {
     i['name']: i for i in all_entities
 }
+
+for entity in all_entities:
+    print(entity['name'], f'https://wandb.ai/alexdremov/adalayers/runs/{entity["run_name"]}/overview')
+    print(entity)

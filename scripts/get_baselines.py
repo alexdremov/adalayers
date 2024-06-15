@@ -31,6 +31,7 @@ def get_max_layers(baseline):
 
 def plot_baselines(name, baselines, metric, ours_score):
     baseline_data = [api.run(baseline) for baseline in baselines]
+    baseline_data = [run for run in baseline_data if run.state != 'running']
     baseline_layers = [get_max_layers(baseline) for baseline in baseline_data]
     num_layers = baseline_layers[0]
     assert all(num_layers == i for i in baseline_layers)
@@ -39,6 +40,7 @@ def plot_baselines(name, baselines, metric, ours_score):
         get_baseline_info(baseline=baseline, num_layers=num_layers, metric=metric)
         for baseline in baseline_data
     ]
+    baseline_data = sorted(baseline_data)
 
     baseline_layers = np.array([layer for layer, _ in baseline_data])
     baseline_scores = [score for _, score in baseline_data]
@@ -56,7 +58,8 @@ def plot_baselines(name, baselines, metric, ours_score):
     )
     for i, value in enumerate(baseline_scores):
         plt.annotate(
-            f"{value:.1f}", xy=(baseline_layers[i] - 0.17, baseline_scores[i] + 0.6)
+            f"{value:.1f}", xy=(baseline_layers[i], baseline_scores[i] + 0.6),
+            ha='center'
         )
 
     plt.hlines(
@@ -75,11 +78,13 @@ def plot_baselines(name, baselines, metric, ours_score):
         linewidth=4,
     )
 
-    metric_name = {"acc": "accuracy, %", "f1": "$f_1$, %"}[metric]
+    metric_name = {"acc": "accuracy, %", "f1": "\\$f_1\\$, %"}[metric]
 
     plt.legend(loc="upper right", fancybox=True, framealpha=1.0)
-    plt.xlabel("Номер слоя")
-    plt.ylabel(f"{metric_name}")
+    plt.xlabel("Номер слоя", labelpad=12)
+    plt.ylabel(f"{metric_name}", labelpad=12)
+    plt.xticks(baseline_layers.tolist())
+    plt.tight_layout()
 
     plt.savefig(f"baselines/{name}.svg", transparent=True)
     plt.savefig(f"baselines/{name}.png", transparent=True)
@@ -102,6 +107,27 @@ plot_baselines(
 )
 
 plot_baselines(
+    name="cola",
+    baselines=[
+        "alexdremov/adalayers/d1xs63xn",
+        'alexdremov/adalayers/o1gl9jit',
+        'alexdremov/adalayers/5ssyxsks',
+        'alexdremov/adalayers/12lsg2ed',
+        'alexdremov/adalayers/3z3p00m1',
+        'alexdremov/adalayers/7jgo733w',
+        'alexdremov/adalayers/d7v50xjf',
+        'alexdremov/adalayers/zm3v60fz',
+        'alexdremov/adalayers/clcehodm',
+        'alexdremov/adalayers/x4p007ty',
+        'alexdremov/adalayers/18a0yluz',
+        'alexdremov/adalayers/ceb00j03',
+    ],
+    metric="acc",
+    ours_score=all_entities_mapping['cola']['metric'],
+)
+
+
+plot_baselines(
     name="conll",
     baselines=[
         "alexdremov/adalayers/pz0k9p56",
@@ -111,7 +137,8 @@ plot_baselines(
         "alexdremov/adalayers/rbw7zqb9",
         "alexdremov/adalayers/s5e9h0pc",
         "alexdremov/adalayers/3tr0l2qs",
-        "alexdremov/adalayers/w72x3lrh",
+        "alexdremov/adalayers/n3ue81hz",
+        "alexdremov/adalayers/sdq1hg1r",
     ],
     metric="f1",
     ours_score=all_entities_mapping['conll']['metric'],
