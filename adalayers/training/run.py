@@ -110,6 +110,7 @@ def process(experiment: Experiment, res_dir: str):
     except Exception as e:
         logger.error(e)
 
+
 OmegaConf.register_new_resolver("cat", lambda *x: " ".join(map(str, x)))
 
 

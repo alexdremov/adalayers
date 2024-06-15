@@ -1,9 +1,5 @@
 def tokenize_and_align_labels(tokenizer, words, tags):
-    tokenized_inputs = tokenizer(
-        words,
-        truncation=True,
-        is_split_into_words=True
-    )
+    tokenized_inputs = tokenizer(words, truncation=True, is_split_into_words=True)
     word_ids = tokenized_inputs.word_ids()
 
     current_word = None
@@ -32,7 +28,7 @@ def tokenize_and_align_labels(tokenizer, words, tags):
             # Append the adjusted label to the new_labels list
             label_ids.append(label)
 
-    tokenized_inputs['word_ids'] = list(word_ids)
+    tokenized_inputs["word_ids"] = list(word_ids)
     tokenized_inputs["labels"] = list(label_ids)
     return tokenized_inputs
 

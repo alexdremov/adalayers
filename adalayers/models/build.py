@@ -17,6 +17,7 @@ from adalayers.models.ada_layers_token_classifier import (
 
 logger = logging.getLogger(__name__)
 
+
 def build_model(config: Experiment, run):
     match config.model.name:
         case "automodel":
@@ -34,10 +35,14 @@ def build_model(config: Experiment, run):
             for name, param in model.named_parameters():
                 param.requires_grad = name.startswith("classifier")
         case "adalayers":
-            config_adalayers = AdaLayersForSequenceClassificationConfig(**config.model.kwargs)
+            config_adalayers = AdaLayersForSequenceClassificationConfig(
+                **config.model.kwargs
+            )
             model = AdaLayersForSequenceClassification(config_adalayers)
         case "adalayers_token":
-            config_adalayers = AdaLayersForTokenClassificationConfig(**config.model.kwargs)
+            config_adalayers = AdaLayersForTokenClassificationConfig(
+                **config.model.kwargs
+            )
             model = AdaLayersForTokenClassification(config_adalayers)
         case _:
             raise RuntimeError(f"Unknown model architecture {config.model.name = }")
@@ -46,9 +51,11 @@ def build_model(config: Experiment, run):
         artifact = run.use_artifact(config.model.restore_artifact)
         if artifact is not None:
             loaded = artifact.download()
-            load_model(model, os.path.join(loaded, 'model.safetensors'))
+            load_model(model, os.path.join(loaded, "model.safetensors"))
         else:
-            logger.warning(f"No artifact found for {config.model.restore_artifact}. It's fine if this is a DDP subprocess")
+            logger.warning(
+                f"No artifact found for {config.model.restore_artifact}. It's fine if this is a DDP subprocess"
+            )
 
     return model
 
@@ -71,10 +78,14 @@ class WrappedTokenizer:
 
 def build_tokenizer(config: Experiment):
     tokenizer = transformers.AutoTokenizer.from_pretrained(
-        **{k: v for k, v in config.tokenizer_pretrained.items() if k not in ('tokenize_kwargs', 'pad_kwargs')}
+        **{
+            k: v
+            for k, v in config.tokenizer_pretrained.items()
+            if k not in ("tokenize_kwargs", "pad_kwargs")
+        }
     )
     return WrappedTokenizer(
         tokenizer=tokenizer,
-        call_kwargs=config.tokenizer_pretrained.get('tokenize_kwargs', {}),
-        pad_kwargs=config.tokenizer_pretrained.get('pad_kwargs', {})
+        call_kwargs=config.tokenizer_pretrained.get("tokenize_kwargs", {}),
+        pad_kwargs=config.tokenizer_pretrained.get("pad_kwargs", {}),
     )

@@ -18,8 +18,7 @@ class AdaLayersForTokenClassification(AdaLayersBase):
     def __init__(self, config: AdaLayersForTokenClassificationConfig):
         super().__init__(config)
         self.logits = nn.Linear(
-            in_features=config.project_dim,
-            out_features=config.num_classes
+            in_features=config.project_dim, out_features=config.num_classes
         )
         self.encoder_layers = nn.ModuleList()
 
@@ -43,10 +42,7 @@ class AdaLayersForTokenClassification(AdaLayersBase):
             )
 
     def forward(
-        self,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        *args,
-        **kwargs
+        self, attention_mask: Optional[torch.FloatTensor] = None, *args, **kwargs
     ) -> Union[Tuple[torch.Tensor], TokenClassifierOutput]:
         (
             weighted,
@@ -54,7 +50,7 @@ class AdaLayersForTokenClassification(AdaLayersBase):
             hidden_states,
             attentions,
         ) = super().forward(*args, **kwargs, attention_mask=attention_mask)
-        key_padding_mask=(attention_mask == 0)
+        key_padding_mask = attention_mask == 0
         for module in self.encoder_layers:
             weighted = module(weighted, src_key_padding_mask=key_padding_mask)
         weighted = F.dropout(
@@ -62,31 +58,36 @@ class AdaLayersForTokenClassification(AdaLayersBase):
         )
         logits = self.logits(weighted)
 
-        if "labels" in kwargs and kwargs['labels'] is not None:
+        if "labels" in kwargs and kwargs["labels"] is not None:
             if self.config.use_crf:
                 loss -= self.crf.forward(
                     emissions=logits,
-                    tags=kwargs['labels'] * (kwargs['labels'] > 0),
+                    tags=kwargs["labels"] * (kwargs["labels"] > 0),
                     mask=attention_mask == 1,
-                    reduction='none' if self.config.focal_loss_enabled else 'mean',
+                    reduction="none" if self.config.focal_loss_enabled else "mean",
                 )
             else:
                 ce_loss = F.cross_entropy(
                     input=logits.view(-1, logits.size(-1)),
-                    target=kwargs['labels'].view(-1),
-                    reduction='none' if self.config.focal_loss_enabled else 'mean',
+                    target=kwargs["labels"].view(-1),
+                    reduction="none" if self.config.focal_loss_enabled else "mean",
                     ignore_index=-100,
                     weight=self.classes_weights,
                 )
                 if self.config.focal_loss_enabled:
                     pt = torch.exp(-ce_loss)
-                    alpha, gamma = self.config.focal_loss_alpha, self.config.focal_loss_gamma
-                    ce_loss = (alpha * (1-pt)**gamma * ce_loss).mean()
+                    alpha, gamma = (
+                        self.config.focal_loss_alpha,
+                        self.config.focal_loss_gamma,
+                    )
+                    ce_loss = (alpha * (1 - pt) ** gamma * ce_loss).mean()
                 loss += ce_loss
 
         if self.config.use_crf:
             device = logits.device
-            logits = torch.as_tensor(self.crf.decode(emissions=logits, mask=attention_mask == 1)).to(device)
+            logits = torch.as_tensor(
+                self.crf.decode(emissions=logits, mask=attention_mask == 1)
+            ).to(device)
             logits = F.one_hot(logits, num_classes=self.num_classes)
 
         return TokenClassifierOutput(

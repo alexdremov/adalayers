@@ -22,7 +22,10 @@ def load_super_glue_rte(tokenizer: PreTrainedTokenizer):
     def preprocess(batch):
         batch.update(
             tokenizer(
-                [i + "<sep>" + j for i, j in zip(batch["premise"], batch["hypothesis"])],
+                [
+                    i + "<sep>" + j
+                    for i, j in zip(batch["premise"], batch["hypothesis"])
+                ],
                 truncation=True,
             )
         )

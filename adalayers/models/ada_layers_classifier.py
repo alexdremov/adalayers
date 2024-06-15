@@ -16,8 +16,7 @@ class AdaLayersForSequenceClassification(AdaLayersBase):
     def __init__(self, config: AdaLayersForSequenceClassificationConfig):
         super().__init__(config)
         self.logits = nn.Linear(
-            in_features=config.project_dim,
-            out_features=config.num_classes
+            in_features=config.project_dim, out_features=config.num_classes
         )
         self.self_attention = nn.MultiheadAttention(
             embed_dim=config.project_dim,
@@ -27,10 +26,7 @@ class AdaLayersForSequenceClassification(AdaLayersBase):
         )
 
     def forward(
-        self,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        *args,
-        **kwargs
+        self, attention_mask: Optional[torch.FloatTensor] = None, *args, **kwargs
     ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
         (
             weighted,
@@ -45,11 +41,15 @@ class AdaLayersForSequenceClassification(AdaLayersBase):
         weighted = F.dropout(
             weighted, p=self.config.attention_dropout_prob, training=self.training
         )
-        weighted = (weighted * attention_mask.unsqueeze(-1)).sum(-2) / attention_mask.sum(-1, keepdim=True)
+        weighted = (weighted * attention_mask.unsqueeze(-1)).sum(
+            -2
+        ) / attention_mask.sum(-1, keepdim=True)
         logits = self.logits(weighted)
 
-        if "labels" in kwargs and kwargs['labels'] is not None:
-            loss += F.cross_entropy(logits, kwargs['labels'].view(-1), weight=self.classes_weights)
+        if "labels" in kwargs and kwargs["labels"] is not None:
+            loss += F.cross_entropy(
+                logits, kwargs["labels"].view(-1), weight=self.classes_weights
+            )
 
         return SequenceClassifierOutput(
             loss=loss,

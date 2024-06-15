@@ -31,9 +31,9 @@ def evaluate(experiment: Experiment, model, dataset, dump_file=None):
 
     dataset = dataset.add_column("index", list(range(len(dataset))))
     columns_to_use = ["input_ids", "attention_mask", "index"]
-    if 'label' in dataset.column_names:
+    if "label" in dataset.column_names:
         columns_to_use.append("label")
-    if 'labels' in dataset.column_names:
+    if "labels" in dataset.column_names:
         columns_to_use.append("labels")
 
     dataloader = torch.utils.data.DataLoader(
@@ -70,10 +70,12 @@ def evaluate(experiment: Experiment, model, dataset, dump_file=None):
                 predictions += out.view(-1).numpy().tolist()
             elif experiment.optimization.mode == "conll_ner":
                 for index, prediction in zip(indexes, out.numpy().tolist()):
-                    labels_by_rows.append(ids_to_tags(dataset[index]['ner_tags']))
+                    labels_by_rows.append(ids_to_tags(dataset[index]["ner_tags"]))
                     predictions_by_rows.append(
                         ids_to_tags(
-                            collapse_tokenized_token_predictions(dataset[index]['word_ids'], prediction)
+                            collapse_tokenized_token_predictions(
+                                dataset[index]["word_ids"], prediction
+                            )
                         )
                     )
                     labels += labels_by_rows[-1]
@@ -84,13 +86,21 @@ def evaluate(experiment: Experiment, model, dataset, dump_file=None):
     if dump_file:
         with open(dump_file, "w") as f:
             f.writelines(
-                json.dumps(dict(label=label, prediction=prediction, data=data, logits=logit)) + '\n'
-                for label, prediction, data, logit in zip(tqdm(labels_by_rows), predictions_by_rows, dataset, logits)
+                json.dumps(
+                    dict(label=label, prediction=prediction, data=data, logits=logit)
+                )
+                + "\n"
+                for label, prediction, data, logit in zip(
+                    tqdm(labels_by_rows), predictions_by_rows, dataset, logits
+                )
             )
 
     if experiment.optimization.mode == "default":
         return dict(
-            acc=accuracy_score(labels, predictions, ),
+            acc=accuracy_score(
+                labels,
+                predictions,
+            ),
             f1=f1_score(labels, predictions, average="macro"),
             f1_micro=f1_score(labels, predictions, average="micro"),
             recall=recall_score(labels, predictions, average="macro"),
@@ -150,13 +160,13 @@ def eval_and_save(
         experiment=experiment,
         model=pl_model,
         dataset=dataset["val"],
-        dump_file='last_eval.jsonl' if save_data else None
+        dump_file="last_eval.jsonl" if save_data else None,
     )
     test_res = evaluate(
         experiment=experiment,
         model=pl_model,
         dataset=dataset["test"],
-        dump_file='last_test.jsonl' if save_data else None
+        dump_file="last_test.jsonl" if save_data else None,
     )
 
     logger.info(f"val metrics for last: {val_res}")
@@ -186,13 +196,13 @@ def eval_and_save(
         experiment=experiment,
         model=pl_model,
         dataset=dataset["val"],
-        dump_file='best_eval.jsonl' if save_data else None
+        dump_file="best_eval.jsonl" if save_data else None,
     )
     test_res = evaluate(
         experiment=experiment,
         model=pl_model,
         dataset=dataset["test"],
-        dump_file='best_test.jsonl' if save_data else None
+        dump_file="best_test.jsonl" if save_data else None,
     )
 
     logger.info(f"val metrics for best: {val_res}")

@@ -23,7 +23,7 @@ class AdaLayersBaseConfig(PretrainedConfig):
         classes_weights: Optional[list[float]] = None,
         add_pos_embeddings: bool = False,
         generate_fake_decoder_input_ids=False,
-        distribution_cutoff = 0.0,
+        distribution_cutoff=0.0,
         **kwargs,
     ):
         self.base_model = base_model
@@ -33,12 +33,16 @@ class AdaLayersBaseConfig(PretrainedConfig):
         self.attention_heads_num = attention_heads_num
         self.attention_dropout_prob = attention_dropout_prob
         self.topk_distribution = topk_distribution
-        self.freeze_distribution = freeze_distribution or pick_one_layer_only is not None
+        self.freeze_distribution = (
+            freeze_distribution or pick_one_layer_only is not None
+        )
         self.alpha_distribution = alpha_distribution
         self.lambda_distribution_entropy = lambda_distribution_entropy
         self.pick_one_layer_only = pick_one_layer_only
         self.freeze_base_model = freeze_base_model
-        self.classes_weights = list(classes_weights) if classes_weights is not None else None
+        self.classes_weights = (
+            list(classes_weights) if classes_weights is not None else None
+        )
         self.add_pos_embeddings = add_pos_embeddings
         self.generate_fake_decoder_input_ids = generate_fake_decoder_input_ids
         self.distribution_cutoff = distribution_cutoff
@@ -49,14 +53,9 @@ class AdaLayersBaseConfig(PretrainedConfig):
 class AdaLayersForSequenceClassificationConfig(AdaLayersBaseConfig):
     model_type = "ada_layers_classifier"
 
-    def __init__(
-        self,
-        num_classes: int = 2,
-        **kwargs
-    ):
+    def __init__(self, num_classes: int = 2, **kwargs):
         self.num_classes = num_classes
         super().__init__(**kwargs)
-
 
 
 class AdaLayersForTokenClassificationConfig(AdaLayersBaseConfig):
@@ -70,8 +69,8 @@ class AdaLayersForTokenClassificationConfig(AdaLayersBaseConfig):
         focal_loss_alpha: float = 0.25,
         attention_layers_num=1,
         dim_feedforward=1024,
-        use_crf= False,
-        **kwargs
+        use_crf=False,
+        **kwargs,
     ):
         self.num_classes = num_classes
         self.focal_loss_enabled = focal_loss_enabled

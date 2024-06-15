@@ -20,11 +20,13 @@ class PositionalEncoding(nn.Module):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
         self.d_model = d_model
-        self.register_buffer('pe', self.make_pe(max_len), persistent=False)
+        self.register_buffer("pe", self.make_pe(max_len), persistent=False)
 
     def make_pe(self, max_len: int):
         position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, self.d_model, 2) * (-math.log(10000.0) / self.d_model))
+        div_term = torch.exp(
+            torch.arange(0, self.d_model, 2) * (-math.log(10000.0) / self.d_model)
+        )
         pe = torch.zeros(max_len, self.d_model)
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
@@ -40,7 +42,6 @@ class PositionalEncoding(nn.Module):
             self.pe = self.make_pe(seq_len).to(self.pe.device)
         x = x + self.pe[:seq_len][None]
         return self.dropout(x)
-
 
 
 class AdaLayersBase(PreTrainedModel):
@@ -61,7 +62,7 @@ class AdaLayersBase(PreTrainedModel):
                 nn.Linear(
                     in_features=config.layer_in_dim,
                     out_features=config.project_dim,
-                    bias=False
+                    bias=False,
                 )
                 for _ in range(config.layers_num)
             ]
@@ -69,8 +70,7 @@ class AdaLayersBase(PreTrainedModel):
         self.norms = nn.ModuleList(
             [
                 nn.LayerNorm(
-                    normalized_shape=config.project_dim,
-                    elementwise_affine=False
+                    normalized_shape=config.project_dim, elementwise_affine=False
                 )
                 for _ in range(config.layers_num)
             ]
@@ -82,7 +82,11 @@ class AdaLayersBase(PreTrainedModel):
         )
 
         if config.classes_weights:
-            self.register_buffer("classes_weights", torch.tensor(config.classes_weights), persistent=False)
+            self.register_buffer(
+                "classes_weights",
+                torch.tensor(config.classes_weights),
+                persistent=False,
+            )
         else:
             self.classes_weights = None
 
@@ -111,12 +115,18 @@ class AdaLayersBase(PreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
     ):
-        assert output_hidden_states is None or output_hidden_states == True, "Must always output hidden states"
+        assert (
+            output_hidden_states is None or output_hidden_states == True
+        ), "Must always output hidden states"
 
-        with torch.inference_mode() if self.config.freeze_base_model else contextlib.nullcontext():
+        with (
+            torch.inference_mode()
+            if self.config.freeze_base_model
+            else contextlib.nullcontext()
+        ):
             decoder_input_ids = {}
             if self.config.generate_fake_decoder_input_ids:
-                decoder_input_ids['decoder_input_ids'] = input_ids[:, :1]
+                decoder_input_ids["decoder_input_ids"] = input_ids[:, :1]
             outputs = self.model(
                 input_ids,
                 attention_mask=attention_mask,
@@ -127,7 +137,9 @@ class AdaLayersBase(PreTrainedModel):
                 **decoder_input_ids,
             )
 
-        hiddens = getattr(outputs, "hidden_states", getattr(outputs, "encoder_hidden_states", None))
+        hiddens = getattr(
+            outputs, "hidden_states", getattr(outputs, "encoder_hidden_states", None)
+        )
 
         projected = torch.stack(
             tensors=[
@@ -150,9 +162,9 @@ class AdaLayersBase(PreTrainedModel):
             and not self.config.freeze_distribution
             and labels is not None
         ):
-            distribution_entropy = -(
-                    distribution * torch.log(distribution + 1e-6)
-            ).sum(-1).mean()
+            distribution_entropy = (
+                -(distribution * torch.log(distribution + 1e-6)).sum(-1).mean()
+            )
             loss += self.config.lambda_distribution_entropy * distribution_entropy
 
         context = (
@@ -179,7 +191,7 @@ class AdaLayersBase(PreTrainedModel):
                 self.distribution,
                 k=len(self.distribution) - self.config.topk_distribution,
                 dim=0,
-                largest=False
+                largest=False,
             )
             distribution[indices_exclude] = float("-inf")
         return F.softmax(distribution * self.config.alpha_distribution, dim=0)
@@ -191,6 +203,6 @@ class AdaLayersBase(PreTrainedModel):
             mask = distribution <= self.config.distribution_cutoff
             exclude = torch.where(mask, distribution, 0)
             if mask.sum().item() > 0:
-                distribution = (distribution - exclude)
+                distribution = distribution - exclude
                 distribution = distribution / distribution.sum()
         return distribution

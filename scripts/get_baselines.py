@@ -2,10 +2,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from final_info import (
-    all_entities_mapping,
-    api
-)
+from final_info import all_entities_mapping, api
 
 font = {"size": 12 * 1.333}
 matplotlib.rc("font", **font)
@@ -31,7 +28,7 @@ def get_max_layers(baseline):
 
 def plot_baselines(name, baselines, metric, ours_score):
     baseline_data = [api.run(baseline) for baseline in baselines]
-    baseline_data = [run for run in baseline_data if run.state != 'running']
+    baseline_data = [run for run in baseline_data if run.state != "running"]
     baseline_layers = [get_max_layers(baseline) for baseline in baseline_data]
     num_layers = baseline_layers[0]
     assert all(num_layers == i for i in baseline_layers)
@@ -58,8 +55,9 @@ def plot_baselines(name, baselines, metric, ours_score):
     )
     for i, value in enumerate(baseline_scores):
         plt.annotate(
-            f"{value:.1f}", xy=(baseline_layers[i], baseline_scores[i] + 0.6),
-            ha='center'
+            f"{value:.1f}",
+            xy=(baseline_layers[i], baseline_scores[i] + 0.6),
+            ha="center",
         )
 
     plt.hlines(
@@ -103,27 +101,27 @@ plot_baselines(
         "alexdremov/adalayers/nhqox0ez",
     ],
     metric="acc",
-    ours_score=all_entities_mapping['imdb']['metric'],
+    ours_score=all_entities_mapping["imdb"]["metric"],
 )
 
 plot_baselines(
     name="cola",
     baselines=[
         "alexdremov/adalayers/d1xs63xn",
-        'alexdremov/adalayers/o1gl9jit',
-        'alexdremov/adalayers/5ssyxsks',
-        'alexdremov/adalayers/12lsg2ed',
-        'alexdremov/adalayers/3z3p00m1',
-        'alexdremov/adalayers/7jgo733w',
-        'alexdremov/adalayers/d7v50xjf',
-        'alexdremov/adalayers/zm3v60fz',
-        'alexdremov/adalayers/clcehodm',
-        'alexdremov/adalayers/x4p007ty',
-        'alexdremov/adalayers/18a0yluz',
-        'alexdremov/adalayers/ceb00j03',
+        "alexdremov/adalayers/o1gl9jit",
+        "alexdremov/adalayers/5ssyxsks",
+        "alexdremov/adalayers/12lsg2ed",
+        "alexdremov/adalayers/3z3p00m1",
+        "alexdremov/adalayers/7jgo733w",
+        "alexdremov/adalayers/d7v50xjf",
+        "alexdremov/adalayers/zm3v60fz",
+        "alexdremov/adalayers/clcehodm",
+        "alexdremov/adalayers/x4p007ty",
+        "alexdremov/adalayers/18a0yluz",
+        "alexdremov/adalayers/ceb00j03",
     ],
     metric="acc",
-    ours_score=all_entities_mapping['cola']['metric'],
+    ours_score=all_entities_mapping["cola"]["metric"],
 )
 
 
@@ -141,5 +139,5 @@ plot_baselines(
         "alexdremov/adalayers/sdq1hg1r",
     ],
     metric="f1",
-    ours_score=all_entities_mapping['conll']['metric'],
+    ours_score=all_entities_mapping["conll"]["metric"],
 )

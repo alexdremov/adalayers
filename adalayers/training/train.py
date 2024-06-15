@@ -46,7 +46,7 @@ class LightningModel(pl.LightningModule):
         match self.mode:
             case "default":
                 collator = transformers.DataCollatorWithPadding(
-                tokenizer, padding="longest", max_length=tokenizer.model_max_length
+                    tokenizer, padding="longest", max_length=tokenizer.model_max_length
                 )
             case "conll_ner":
                 collator = transformers.DataCollatorForTokenClassification(
@@ -56,9 +56,9 @@ class LightningModel(pl.LightningModule):
         self.collator = collator
 
         self.columns_to_use = ["input_ids", "attention_mask"]
-        if 'label' in dataset.column_names['train']:
+        if "label" in dataset.column_names["train"]:
             self.columns_to_use.append("label")
-        if 'labels' in dataset.column_names['train']:
+        if "labels" in dataset.column_names["train"]:
             self.columns_to_use.append("labels")
         self.dataset = dataset.select_columns(self.columns_to_use)
 
@@ -118,28 +118,33 @@ class LightningModel(pl.LightningModule):
 
         optimizer_kwargs = self.experiment.optimization.optim_kwargs
         if OmegaConf.is_config(optimizer_kwargs):
-            optimizer_kwargs: dict = OmegaConf.to_container(optimizer_kwargs, resolve=True)
+            optimizer_kwargs: dict = OmegaConf.to_container(
+                optimizer_kwargs, resolve=True
+            )
 
         optimizer = optimizer_cls(
             [
                 {
-                    'params': [
-                        p for n, p in self.named_parameters() if
-                        p.requires_grad and not n.endswith('distribution')
+                    "params": [
+                        p
+                        for n, p in self.named_parameters()
+                        if p.requires_grad and not n.endswith("distribution")
                     ],
-                     **optimizer_kwargs
+                    **optimizer_kwargs,
                 },
                 {
-                     'params': [
-                        p for n, p in self.named_parameters() if
-                        p.requires_grad and n.endswith('distribution')
+                    "params": [
+                        p
+                        for n, p in self.named_parameters()
+                        if p.requires_grad and n.endswith("distribution")
                     ],
-                     **(
-                         optimizer_kwargs | {
-                             'weight_decay': 0.0,
-                         }
-                     )
-                }
+                    **(
+                        optimizer_kwargs
+                        | {
+                            "weight_decay": 0.0,
+                        }
+                    ),
+                },
             ]
         )
         schedulers = [
@@ -176,9 +181,14 @@ class LightningModel(pl.LightningModule):
         ):
             with torch.no_grad():
                 distribution = self.model.distribution_normalized
-                wandb.log({
-                    f"distribution/layer_{i}": value for i, value in enumerate(distribution.detach().cpu().view(-1).numpy().tolist())
-                })
+                wandb.log(
+                    {
+                        f"distribution/layer_{i}": value
+                        for i, value in enumerate(
+                            distribution.detach().cpu().view(-1).numpy().tolist()
+                        )
+                    }
+                )
 
         return output.loss
 
@@ -197,7 +207,11 @@ class LightningModel(pl.LightningModule):
             f"{name}/f1", self.valid_f1, prog_bar=True, on_epoch=True, sync_dist=True
         )
         self.log(
-            f"{name}/f1_micro", self.valid_f1_micro, prog_bar=True, on_epoch=True, sync_dist=True
+            f"{name}/f1_micro",
+            self.valid_f1_micro,
+            prog_bar=True,
+            on_epoch=True,
+            sync_dist=True,
         )
 
         return output.loss
@@ -212,14 +226,14 @@ class LightningModel(pl.LightningModule):
         self.log(f"{name}/f1", self.test_f1, on_epoch=True, sync_dist=True)
         self.log(f"{name}/f1_micro", self.test_f1_micro, on_epoch=True, sync_dist=True)
 
-    def update_metrics(self, logits, labels, step='train'):
+    def update_metrics(self, logits, labels, step="train"):
         acc, f1, f1_micro = (self.acc, self.f1, self.f1_micro)
-        if step == 'val':
+        if step == "val":
             acc, f1, f1_micro = (self.valid_acc, self.valid_f1, self.valid_f1_micro)
-        elif step == 'test':
+        elif step == "test":
             acc, f1, f1_micro = (self.test_acc, self.test_f1, self.test_f1_micro)
 
-        if self.mode == 'default':
+        if self.mode == "default":
             acc.update(logits, labels)
             f1.update(logits, labels)
             f1_micro.update(logits, labels)
@@ -239,22 +253,27 @@ class LightningModel(pl.LightningModule):
         return output.logits
 
     def on_train_epoch_end(self):
-        metrics = dict(acc=self.acc.compute(), f1=self.f1.compute(), f1_micro=self.f1_micro.compute())
+        metrics = dict(
+            acc=self.acc.compute(),
+            f1=self.f1.compute(),
+            f1_micro=self.f1_micro.compute(),
+        )
         if not self.trainer.is_global_zero:
             return
 
         logger.info("Train epoch results")
         logger.info(metrics)
-        if (
-            hasattr(self.model, "distribution_normalized")
-            and self.print_distribution
-        ):
+        if hasattr(self.model, "distribution_normalized") and self.print_distribution:
             distribution = self.model.distribution_normalized
             logger.info("Adaptive layers distribution:")
             logger.info(distribution.detach().cpu().view(-1))
 
     def on_validation_epoch_end(self):
-        metrics = dict(acc=self.valid_acc.compute(), f1=self.valid_f1.compute(), f1_micro=self.valid_f1_micro.compute())
+        metrics = dict(
+            acc=self.valid_acc.compute(),
+            f1=self.valid_f1.compute(),
+            f1_micro=self.valid_f1_micro.compute(),
+        )
         if not self.trainer.is_global_zero:
             return
         logger.info("Validation epoch results")
@@ -288,11 +307,7 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(root_dir, "lightning_checkpoints"),
-        filename=(
-            "{epoch}-{val/"
-            + experiment.optimization.best_metric
-            + ":.4f}"
-        ),
+        filename=("{epoch}-{val/" + experiment.optimization.best_metric + ":.4f}"),
         monitor=f"val/{experiment.optimization.best_metric}",
         mode="max",
         save_weights_only=True,
@@ -300,9 +315,7 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
         save_last=False,
         save_top_k=1,
     )
-    lr_monitor = LearningRateMonitor(
-        logging_interval="epoch"
-    )
+    lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
     early_stop_callback = EarlyStopping(
         monitor=f"val/{experiment.optimization.best_metric}",
@@ -323,7 +336,7 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
             find_unused_parameters=True,
             timeout=datetime.timedelta(seconds=180000),
         ),
-        precision=experiment.optimization.precision
+        precision=experiment.optimization.precision,
     )
 
     pl_model = LightningModel(model, tokenizer, dataset, experiment)

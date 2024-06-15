@@ -4,7 +4,7 @@ wandb.login()
 
 dry_run = True
 api: wandb.Api = wandb.Api()
-project: wandb.apis.public.projects.Project = api.project('adalayers')
+project: wandb.apis.public.projects.Project = api.project("adalayers")
 
 for artifact_type in project.artifacts_types():
     if artifact_type.name != "model":
