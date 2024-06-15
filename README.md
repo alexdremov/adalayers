@@ -42,3 +42,18 @@ General idea presented on the image
 
 <img width="712" alt="Screenshot 2024-06-15 at 15 29 37" src="https://github.com/alexdremov/adalayers/assets/25539425/abbddae1-ba58-46cc-ad9a-672d38dca68f">
 
+Code for `F` can be found in [adalayers/models/ada_layers_base.py](https://github.com/alexdremov/adalayers/blob/main/adalayers/models/ada_layers_base.py).
+All models are implemented with Huggingface interfaces.
+
+## Launch
+
+Training is omegaconf+hydra configurable. Configs from article can be found in
+[configs](https://github.com/alexdremov/adalayers/tree/main/configs).
+
+Environment is poetry-controlled. You can set it up by calling `poetry install`
+
+You can launch simple training by calling `adalayers/training/run.py` like
+
+```
+python adalayers/training/run.py --config-name adalayers_imdb.yaml
+```
