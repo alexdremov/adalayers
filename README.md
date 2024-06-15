@@ -11,6 +11,8 @@ for downstream tasks efficient solving.
 > Clearly, some task-specific model could have been used to
 > achieve even higher scores. Though, such
 > comparison would not be fair.
+>
+> As you see, currently just one frozen base model with proposed algorithm achieves great results 
 
 | Dataset | Base model | Score |
 |:-----------:|:--------------:|---------:|
