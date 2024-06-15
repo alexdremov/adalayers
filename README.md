@@ -5,6 +5,19 @@ for downstream tasks efficient solving.
 
 ---
 
+## Best results
+
+> **Note:** results are highly dependent on base model domain.
+> Clearly, some task-specific model could have been used to
+> achieve even higher scores. Though, such
+> comparison would not be fair.
+
+| **Dataset** | **Base model** | **Score** |
+|:-----------:|:--------------:|---------:|
+| **IMDB**        | RoBERTa-large  | 96.1% acc <br>*(SOTA level)* |
+| **CoLA**        | RoBERTa-large  | 83.6% acc <br>*(SOTA level)* |
+| **CoNLL**       | RoBERTa-large  | 89.4% f1  |
+
 ## Problem
 
 Let's consider the case when you already have a functioning SOTA-level large
@@ -27,15 +40,5 @@ proposed algorithm is highly computationally efficient.
 
 General idea presented on the image
 
-## Best results
+<img width="712" alt="Screenshot 2024-06-15 at 15 29 37" src="https://github.com/alexdremov/adalayers/assets/25539425/abbddae1-ba58-46cc-ad9a-672d38dca68f">
 
-> **Note:** results are highly dependent on base model domain.
-> Clearly, some task-specific model could have been used to
-> achieve even higher scores. Though, such
-> comparison would not be fair.
-
-| **Dataset** | **Base model** | **Score** |
-|:-----------:|:--------------:|---------:|
-| **IMDB**        | RoBERTa-large  | 96.1% acc <br>*(SOTA level)* |
-| **CoLA**        | RoBERTa-large  | 83.6% acc <br>*(SOTA level)* |
-| **CoNLL**       | RoBERTa-large  | 89.4% f1  |
