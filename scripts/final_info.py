@@ -81,8 +81,8 @@ conll = make_info_from_run(
 )
 conll_bart = make_info_from_run(
     name='conll_bart',
-    run_name="68c9mjbd",
-    model_name='diploma_bart_conll_adalayers_token_model_best:v1',
+    run_name="riprvtow",
+    model_name='diploma_bart_conll_adalayers_token_model_best:v2',
     metric_name='f1',
 )
 

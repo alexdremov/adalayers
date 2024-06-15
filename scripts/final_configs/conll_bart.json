@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "/Users/alexdremov/DocumentsLocal/StudyLocal/diploma/adalayers/scripts/artifacts/diploma_bart_conll_adalayers_token_model_best:v1",
+  "_name_or_path": "/Users/alexdremov/DocumentsLocal/StudyLocal/diploma/adalayers/scripts/artifacts/diploma_bart_conll_adalayers_token_model_best:v2",
   "add_pos_embeddings": true,
   "alpha_distribution": 128,
   "architectures": [
@@ -18,7 +18,7 @@
   "freeze_base_model": true,
   "freeze_distribution": false,
   "generate_fake_decoder_input_ids": true,
-  "lambda_distribution_entropy": 0.0,
+  "lambda_distribution_entropy": 0.001,
   "layer_in_dim": 1024,
   "layers_num": 13,
   "model_type": "ada_layers_classifier",
