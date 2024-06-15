@@ -12,7 +12,7 @@ optimization:
   batch_size: 356
   batch_size_eval: 356
   mode: conll_ner
-  early_stop_patience: 32
+  early_stop_patience: 40
   lr_patience: 16
   precision: "16-mixed"
   min_delta: 0.001
@@ -23,14 +23,14 @@ optimization:
 
 model:
   kwargs:
-    project_dim: 256
+    project_dim: 128
     lambda_distribution_entropy: 0.001
     alpha_distribution: 128
     add_pos_embeddings: True
     attention_heads_num: 8
-    attention_dropout_prob: 0.1
-    attention_layers_num: 2
-    dim_feedforward: 1024
+    attention_dropout_prob: 0.2
+    attention_layers_num: 1
+    dim_feedforward: 2048
     distribution_cutoff: 0.01
 
 wandb:

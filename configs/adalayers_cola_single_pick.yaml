@@ -4,11 +4,13 @@ defaults:
 
 optimization:
   early_stop_patience: 64
-  lr_patience: 26
+  lr_patience: 32
 
 model:
   kwargs:
+    project_dim: 128
     pick_one_layer_only: -1
+    attention_dropout_prob: 0.1
 
 wandb:
   name: ${cat:"diploma_pick", ${model.kwargs.pick_one_layer_only}, ${dataset.name}, ${model.name}}

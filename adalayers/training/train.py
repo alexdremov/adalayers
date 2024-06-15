@@ -4,6 +4,7 @@ import datetime
 
 import lightning as pl
 
+from omegaconf import OmegaConf
 import transformers
 import torchmetrics
 
@@ -115,8 +116,31 @@ class LightningModel(pl.LightningModule):
             case _:
                 assert False, "unknown optimizer type"
 
+        optimizer_kwargs = self.experiment.optimization.optim_kwargs
+        if OmegaConf.is_config(optimizer_kwargs):
+            optimizer_kwargs: dict = OmegaConf.to_container(optimizer_kwargs, resolve=True)
+
         optimizer = optimizer_cls(
-            [p for p in self.parameters() if p.requires_grad], **self.experiment.optimization.optim_kwargs
+            [
+                {
+                    'params': [
+                        p for n, p in self.named_parameters() if
+                        p.requires_grad and not n.endswith('distribution')
+                    ],
+                     **optimizer_kwargs
+                },
+                {
+                     'params': [
+                        p for n, p in self.named_parameters() if
+                        p.requires_grad and n.endswith('distribution')
+                    ],
+                     **(
+                         optimizer_kwargs | {
+                             'weight_decay': 0.0,
+                         }
+                     )
+                }
+            ]
         )
         schedulers = [
             {

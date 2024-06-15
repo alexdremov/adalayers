@@ -6,21 +6,13 @@ defaults:
 
 optimization:
   max_epochs: 256
-  batch_size: 900
   batch_size_eval: 900
-  early_stop_patience: 18
-  lr_patience: 8
 
 tokenizer_pretrained:
   add_prefix_space: True
 
 model:
   name: adalayers_token
-  kwargs:
-    attention_heads_num: 16
-    distribution_cutoff: 0.005
-    lambda_distribution_entropy: 0.001
-    alpha_distribution: 128
 
 wandb:
   name: ${cat:"diploma_bart", ${dataset.name}, ${model.name}}
