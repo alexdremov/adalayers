@@ -28,7 +28,7 @@ class ClearmlLogger(BaseLogger):
             reuse_last_task_id=False,
             auto_connect_frameworks=False,
         )
-
+        self._save_dir = save_dir
         self.logger: Logger = self.task.get_logger()
         self.task.set_parameters_as_dict(
             dictionary=config
@@ -43,6 +43,12 @@ class ClearmlLogger(BaseLogger):
 
 
     def finalize(self, status):
+        self.log_model_checkpoint(
+            name="result_dir",
+            metadata=dict(),
+            description="results directory",
+            dir=self._save_dir,
+        )
         self.task.add_tags(status)
         self.task.publish_on_completion()
         self.save()
@@ -116,6 +122,10 @@ class ClearmlLogger(BaseLogger):
     def save(self) -> None:
         super().save()
         self.task.flush(wait_for_uploads=False)
+
+    @property
+    def save_dir(self):
+        return self._save_dir
 
     def set_summary(self, summary):
         self.task.connect(summary, name='summary')
