@@ -57,6 +57,13 @@ class WandbLogger(BaseLogger):
     def log_code(self, dir):
         self.experiment.log_code(dir)
 
+    def log_configs(self, dir):
+        artifact = wandb.Artifact(
+            name='configs', type="config",
+        )
+        artifact.add_dir(local_path=dir)
+        self.experiment.log_artifact(artifact)
+
     def finalize(self, status):
         try:
             self.logger.finalize(status=status)

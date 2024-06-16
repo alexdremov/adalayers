@@ -8,6 +8,10 @@ class BaseLogger(Logger, ABC):
         ...
 
     @abstractmethod
+    def log_configs(self, dir):
+        ...
+
+    @abstractmethod
     def finalize(self, status):
         ...
 

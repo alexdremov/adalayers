@@ -12,6 +12,9 @@ class NoneLogger(BaseLogger, DummyLogger):
     def log_code(self, dir):
         ...
 
+    def log_configs(self, dir):
+        ...
+
     def finalize(self, status):
         ...
 

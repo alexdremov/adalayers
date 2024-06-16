@@ -41,6 +41,12 @@ class ClearmlLogger(BaseLogger):
             artifact_object=os.path.join(dir)
         )
 
+    def log_configs(self, dir):
+        return self.task.upload_artifact(
+            name='configs',
+            artifact_object=os.path.join(dir)
+        )
+
 
     def finalize(self, status):
         self.log_model_checkpoint(
