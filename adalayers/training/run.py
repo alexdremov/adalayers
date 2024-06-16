@@ -66,7 +66,7 @@ def process(experiment: Experiment, res_dir: str):
         notes=experiment.logging.notes,
     )
     logger.info("registered logger")
-    code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "./..")
+    code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "./../..")
     logger.info(f"Code: {code_dir}")
     run_logger.log_code(code_dir)
 
