@@ -7,7 +7,7 @@ defaults:
   - _self_
 
 optimization:
-  max_epochs: 1
+  max_epochs: 256
   batch_size: 600
   batch_size_eval: 600
   precision: "16-mixed"
