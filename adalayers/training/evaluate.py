@@ -203,37 +203,38 @@ def eval_and_save(
          test_res, name="test", model="last"
     )
 
-    pl_model.load_state_dict(torch.load(best_model_path)["state_dict"])
-    model = pl_model.model
+    if best_model_path:
+        pl_model.load_state_dict(torch.load(best_model_path)["state_dict"])
+        model = pl_model.model
 
-    torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_best.pt"))
-    model.save_pretrained(os.path.join(res_dir, "model_best"))
+        torch.save(model.state_dict(), os.path.join(res_dir, "model_state_dict_best.pt"))
+        model.save_pretrained(os.path.join(res_dir, "model_best"))
 
-    val_res = evaluate(
-        experiment=experiment,
-        model=pl_model,
-        dataset=dataset["val"],
-        dump_file="best_eval.jsonl" if save_data else None,
-    )
-    test_res = evaluate(
-        experiment=experiment,
-        model=pl_model,
-        dataset=dataset["test"],
-        dump_file="best_test.jsonl" if save_data else None,
-    )
+        val_res = evaluate(
+            experiment=experiment,
+            model=pl_model,
+            dataset=dataset["val"],
+            dump_file="best_eval.jsonl" if save_data else None,
+        )
+        test_res = evaluate(
+            experiment=experiment,
+            model=pl_model,
+            dataset=dataset["test"],
+            dump_file="best_test.jsonl" if save_data else None,
+        )
 
-    logger.info(f"val metrics for best: {val_res}")
-    logger.info(f"test metrics for best: {test_res}")
+        logger.info(f"val metrics for best: {val_res}")
+        logger.info(f"test metrics for best: {test_res}")
 
-    save_model(
-        experiment,
-        directory=os.path.join(res_dir, "model_best"),
-        name="model_best",
-        metrics=test_res,
-    )
-    dump_summary_metrics(
-         val_res, name="val", model="best"
-    )
-    dump_summary_metrics(
-         test_res, name="test", model="best"
-    )
+        save_model(
+            experiment,
+            directory=os.path.join(res_dir, "model_best"),
+            name="model_best",
+            metrics=test_res,
+        )
+        dump_summary_metrics(
+            val_res, name="val", model="best"
+        )
+        dump_summary_metrics(
+            test_res, name="test", model="best"
+        )

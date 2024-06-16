@@ -189,7 +189,7 @@ class LightningModel(pl.LightningModule):
                             distribution.detach().cpu().view(-1).numpy().tolist()
                         )
                     },
-                    step=batch_idx
+                    step=self.global_step
                 )
 
         return output.loss

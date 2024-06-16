@@ -76,10 +76,10 @@ class ClearmlLogger(BaseLogger):
         output_model = OutputModel(
             task=self.task,
             framework="PyTorch",
-            config_dict=metadata,
             name=name,
             comment=description,
         )
+        output_model.set_all_metadata(metadata)
         output_model.update_weights_package(
             weights_path=dir,
             auto_delete_file=False,
