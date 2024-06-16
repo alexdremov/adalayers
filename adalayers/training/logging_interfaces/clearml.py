@@ -27,6 +27,7 @@ class ClearmlLogger(BaseLogger):
             task_name=name,
             reuse_last_task_id=False,
             auto_connect_frameworks=False,
+            output_uri=True
         )
         self._save_dir = save_dir
         self.logger: Logger = self.task.get_logger()
@@ -85,10 +86,12 @@ class ClearmlLogger(BaseLogger):
             name=name,
             comment=description,
         )
-        output_model.set_all_metadata(metadata)
+        for key, value in metadata.items():
+            output_model.set_metadata(key, value)
         output_model.update_weights_package(
             weights_path=dir,
             auto_delete_file=False,
+            upload_uri=self.task.output_uri,
         )
 
     def log_artifact(self, name, metadata, description, object):
@@ -107,7 +110,8 @@ class ClearmlLogger(BaseLogger):
         with tempfile.NamedTemporaryFile(mode='wb', delete=False) as file:
             torch.save(model, file)
         output_model.update_weights(
-            weights_filename=file.name
+            weights_filename=file.name,
+            upload_uri=self.task.output_uri,
         )
         output_model.update_design(
             config_text=str(model)
