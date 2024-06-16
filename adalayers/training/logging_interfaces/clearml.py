@@ -2,6 +2,7 @@ from typing import Dict
 
 import tempfile
 
+import os
 import torch
 from torch import Tensor
 from torch.nn import Module
@@ -114,7 +115,7 @@ class ClearmlLogger(BaseLogger):
 
     def save(self) -> None:
         super().save()
-        self.task.flush(wait_for_uploads=True)
+        self.task.flush(wait_for_uploads=False)
 
     def set_summary(self, summary):
         self.task.connect(summary, name='summary')
