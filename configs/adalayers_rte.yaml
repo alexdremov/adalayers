@@ -19,5 +19,5 @@ model:
     alpha_distribution: 256
     attention_heads_num: 8
 
-wandb:
+logging:
   name: ${cat:"final", ${dataset.name}, ${model.name}}

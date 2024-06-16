@@ -15,5 +15,5 @@ model:
   kwargs:
     attention_dropout_prob: 0.1
 
-wandb:
+logging:
   name: ${cat:"diploma_bart", ${dataset.name}, ${model.name}}

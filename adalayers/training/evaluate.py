@@ -4,12 +4,10 @@ import os
 import gc
 import logging
 
-import wandb
-from wandb.apis.public import Run
-
 from tqdm.auto import tqdm
 
 from adalayers.training.config import Experiment
+from adalayers.training.logging_interfaces.factory import get_logger
 from adalayers.training.train import LightningModel
 from adalayers.datasets.utils import collapse_tokenized_token_predictions
 from adalayers.datasets.conlleval import ids_to_tags, evaluate as conll_evaluate
@@ -19,14 +17,20 @@ from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_sc
 logger = logging.getLogger(__name__)
 
 
-def dump_wandb_summary_metrics(wandb: Run, results, name, model):
+def dump_summary_metrics(results, name, model):
+    run_logger = get_logger()
+    res = dict()
     for k, v in results.items():
-        wandb.summary[f"{name}_{model}_{k}"] = v
+        res[f"{name}_{model}_{k}"] = v
+    run_logger.set_summary(res)
 
 
 @torch.no_grad()
 def evaluate(experiment: Experiment, model, dataset, dump_file=None):
-    torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()
     gc.collect()
 
     dataset = dataset.add_column("index", list(range(len(dataset))))
@@ -45,7 +49,11 @@ def evaluate(experiment: Experiment, model, dataset, dump_file=None):
         collate_fn=model.collator,
     )
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "")
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else (
+            "mps" if torch.backends.mps.is_available() else "cpu"
+            )
+        )
     model = model.to(device).eval()
     labels = []
     predictions = []
@@ -84,16 +92,29 @@ def evaluate(experiment: Experiment, model, dataset, dump_file=None):
                 raise NotImplementedError()
 
     if dump_file:
+        rows = [
+            dict(label=label, prediction=prediction, data=data, logits=logit)
+            for label, prediction, data, logit in zip(
+                tqdm(labels_by_rows), predictions_by_rows, dataset, logits
+            )
+        ]
         with open(dump_file, "w") as f:
             f.writelines(
                 json.dumps(
-                    dict(label=label, prediction=prediction, data=data, logits=logit)
+                    row
                 )
                 + "\n"
-                for label, prediction, data, logit in zip(
-                    tqdm(labels_by_rows), predictions_by_rows, dataset, logits
-                )
+                for row in rows
             )
+        run_logger = get_logger()
+        run_logger.log_artifact(
+            name=dump_file,
+            metadata=dict(
+                dataset_info=str(dataset),
+            ),
+            description='evaluation results',
+            object=rows,
+        )
 
     if experiment.optimization.mode == "default":
         return dict(
@@ -121,8 +142,8 @@ def evaluate(experiment: Experiment, model, dataset, dump_file=None):
         raise NotImplementedError()
 
 
-def save_wandb_model(run, experiment, directory, name, metrics):
-    name = f"{experiment.wandb.name}_{name}"
+def save_model(experiment, directory, name, metrics):
+    name = f"{experiment.logging.name}_{name}"
     name = name.replace(" ", "_")
 
     metadata = dict(config=experiment, name=name)
@@ -130,11 +151,9 @@ def save_wandb_model(run, experiment, directory, name, metrics):
 
     metrics_formatted = ", ".join(f"{k}={v:.4f}" for k, v in metrics.items())
     description = experiment.dataset.name + " | " + metrics_formatted
-    artifact = wandb.Artifact(
-        name=name, type="model", metadata=metadata, description=description
-    )
-    artifact.add_dir(local_path=directory)
-    run.log_artifact(artifact)
+
+    run_logger = get_logger()
+    run_logger.log_model_checkpoint(name=name, metadata=metadata, description=description, dir=directory)
 
 
 def eval_and_save(
@@ -145,7 +164,6 @@ def eval_and_save(
     model,
     res_dir,
     tokenizer,
-    wandb_logger,
 ):
     pl_model = LightningModel(model, tokenizer, dataset, experiment)
     pl_model.load_state_dict(torch.load(last_model_path)["state_dict"])
@@ -172,18 +190,17 @@ def eval_and_save(
     logger.info(f"val metrics for last: {val_res}")
     logger.info(f"test metrics for last: {test_res}")
 
-    save_wandb_model(
-        wandb_logger.experiment,
+    save_model(
         experiment,
         directory=os.path.join(res_dir, "model_last"),
         name="model_last",
         metrics=test_res,
     )
-    dump_wandb_summary_metrics(
-        wandb_logger.experiment, val_res, name="val", model="last"
+    dump_summary_metrics(
+         val_res, name="val", model="last"
     )
-    dump_wandb_summary_metrics(
-        wandb_logger.experiment, test_res, name="test", model="last"
+    dump_summary_metrics(
+         test_res, name="test", model="last"
     )
 
     pl_model.load_state_dict(torch.load(best_model_path)["state_dict"])
@@ -208,16 +225,15 @@ def eval_and_save(
     logger.info(f"val metrics for best: {val_res}")
     logger.info(f"test metrics for best: {test_res}")
 
-    save_wandb_model(
-        wandb_logger.experiment,
+    save_model(
         experiment,
         directory=os.path.join(res_dir, "model_best"),
         name="model_best",
         metrics=test_res,
     )
-    dump_wandb_summary_metrics(
-        wandb_logger.experiment, val_res, name="val", model="best"
+    dump_summary_metrics(
+         val_res, name="val", model="best"
     )
-    dump_wandb_summary_metrics(
-        wandb_logger.experiment, test_res, name="test", model="best"
+    dump_summary_metrics(
+         test_res, name="test", model="best"
     )

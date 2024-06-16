@@ -28,7 +28,8 @@ class ModelConfig:
 
 
 @dataclass
-class WandbConfig:
+class LoggingConfig:
+    type: str = "wandb"
     project: str = "adalayers"
     name: str = MISSING
     notes: str = ""
@@ -45,7 +46,7 @@ class DatasetConfig:
 class Experiment:
     optimization: OptimizationConfig = field(default_factory=OptimizationConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
-    wandb: WandbConfig = field(default_factory=WandbConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
     tokenizer_pretrained: dict = field(default_factory=dict)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     seed: int = 42

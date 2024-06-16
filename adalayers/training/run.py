@@ -7,18 +7,19 @@ import logging
 import torch
 import random
 
-from lightning.pytorch.loggers import WandbLogger
 from lightning import seed_everything as pl_seed_everything
 
 import numpy as np
 
 from omegaconf import OmegaConf, DictConfig
+import torch.distributed
 
 from adalayers.training.config import Experiment
 from adalayers.models import build_model, build_tokenizer
 from adalayers.datasets import build_dataset
 from adalayers.training.evaluate import eval_and_save
 from adalayers.training.train import train
+from adalayers.training.logging_interfaces import register_logger, get_logger
 
 logger = logging.getLogger(__name__)
 
@@ -55,43 +56,24 @@ def process(experiment: Experiment, res_dir: str):
         experiment, resolve=True, throw_on_missing=True
     )
     logger.info(experiment_resolved)
-    wandb_logger = WandbLogger(
+    run_logger = register_logger(
+        type=experiment.logging.type,
         log_model=True,
         save_dir=res_dir,
         project="adalayers",
         config=experiment_resolved,
-        name=experiment.wandb.name,
-        notes=experiment.wandb.notes,
+        name=experiment.logging.name,
+        notes=experiment.logging.notes,
     )
+    logger.info("registered logger")
     code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "./..")
     logger.info(f"Code: {code_dir}")
-    wandb_logger.experiment.log_code(code_dir)
+    run_logger.log_code(code_dir)
 
-    model = build_model(experiment, wandb_logger.experiment)
+    model = build_model(experiment)
     tokenizer = build_tokenizer(experiment)
     dataset = build_dataset(experiment.dataset.name, tokenizer)
-
-    for step in ["train", "val", "test"]:
-        wandb_logger.experiment.define_metric(
-            f"{step}/loss_epoch", goal="minimize", summary="min,last"
-        )
-        wandb_logger.experiment.define_metric(
-            f"{step}/acc_epoch", goal="maximize", summary="max,last"
-        )
-        wandb_logger.experiment.define_metric(
-            f"{step}/f1_epoch", goal="maximize", summary="max,last"
-        )
-        wandb_logger.experiment.define_metric(
-            f"{step}/loss", goal="minimize", summary="min,last"
-        )
-        wandb_logger.experiment.define_metric(
-            f"{step}/acc", goal="maximize", summary="max,last"
-        )
-        wandb_logger.experiment.define_metric(
-            f"{step}/f1", goal="maximize", summary="max,last"
-        )
-
-    train_res = train(experiment, model, tokenizer, dataset, res_dir, wandb_logger)
+    train_res = train(experiment, model, tokenizer, dataset, res_dir)
     if train_res is not None:  # zero rank
         best_model_path, last_model_path = train_res
         eval_and_save(
@@ -102,13 +84,10 @@ def process(experiment: Experiment, res_dir: str):
             model=model,
             res_dir=res_dir,
             tokenizer=tokenizer,
-            wandb_logger=wandb_logger,
         )
-    torch.distributed.barrier()
-    try:
-        wandb_logger.finalize(status="success")
-    except Exception as e:
-        logger.error(e)
+    if torch.distributed.is_initialized():
+        torch.distributed.barrier()
+    run_logger.finalize(status="success")
 
 
 OmegaConf.register_new_resolver("cat", lambda *x: " ".join(map(str, x)))
@@ -118,7 +97,7 @@ OmegaConf.register_new_resolver("cat", lambda *x: " ".join(map(str, x)))
 def main(cfg: DictConfig):
     experiment: Experiment = OmegaConf.merge(OmegaConf.structured(Experiment), cfg)
     seed_everything(experiment.seed)
-    logger.info(experiment.wandb.name)
+    logger.info(experiment.logging.name)
 
     res_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
     logger.info(f"{res_dir = }")

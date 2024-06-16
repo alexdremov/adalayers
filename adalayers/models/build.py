@@ -1,5 +1,5 @@
 from safetensors.torch import load_model
-import functools
+
 import transformers
 import os
 import logging
@@ -15,10 +15,12 @@ from adalayers.models.ada_layers_token_classifier import (
     AdaLayersForTokenClassificationConfig,
 )
 
+from adalayers.training.logging_interfaces import get_logger
+
 logger = logging.getLogger(__name__)
 
 
-def build_model(config: Experiment, run):
+def build_model(config: Experiment):
     match config.model.name:
         case "automodel":
             model = transformers.AutoModelForSequenceClassification.from_pretrained(
@@ -48,10 +50,10 @@ def build_model(config: Experiment, run):
             raise RuntimeError(f"Unknown model architecture {config.model.name = }")
 
     if config.model.restore_artifact is not None:
-        artifact = run.use_artifact(config.model.restore_artifact)
+        run_logger = get_logger()
+        artifact = run_logger.get_artifact(config.model.restore_artifact)
         if artifact is not None:
-            loaded = artifact.download()
-            load_model(model, os.path.join(loaded, "model.safetensors"))
+            load_model(model, os.path.join(artifact, "model.safetensors"))
         else:
             logger.warning(
                 f"No artifact found for {config.model.restore_artifact}. It's fine if this is a DDP subprocess"
@@ -73,7 +75,10 @@ class WrappedTokenizer:
         return self.tokenizer.pad(*args, **{**self.pad_kwargs, **kwargs})
 
     def __getattr__(self, name):
-        return getattr(self.tokenizer, name)
+        return getattr(super().__getattribute__("tokenizer"), name)
+
+    def __getstate__(self) -> object:
+        return self.__dict__
 
 
 def build_tokenizer(config: Experiment):

@@ -33,5 +33,5 @@ model:
     dim_feedforward: 2048
     distribution_cutoff: 0.01
 
-wandb:
+logging:
   name: ${cat:"diploma", ${dataset.name}, ${model.name}}

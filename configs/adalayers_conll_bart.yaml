@@ -14,5 +14,5 @@ tokenizer_pretrained:
 model:
   name: adalayers_token
 
-wandb:
+logging:
   name: ${cat:"diploma_bart", ${dataset.name}, ${model.name}}

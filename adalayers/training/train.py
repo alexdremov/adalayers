@@ -10,7 +10,6 @@ import torchmetrics
 
 import torch
 import torch.utils.data
-import wandb
 
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 from lightning.pytorch.callbacks import (
@@ -24,6 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from adalayers.training.config import Experiment
+from adalayers.training.logging_interfaces.factory import get_logger
 
 logger = logging.getLogger(__name__)
 
@@ -181,13 +181,15 @@ class LightningModel(pl.LightningModule):
         ):
             with torch.no_grad():
                 distribution = self.model.distribution_normalized
-                wandb.log(
+                run_logger = get_logger()
+                run_logger.log_metrics(
                     {
                         f"distribution/layer_{i}": value
                         for i, value in enumerate(
                             distribution.detach().cpu().view(-1).numpy().tolist()
                         )
-                    }
+                    },
+                    step=batch_idx
                 )
 
         return output.loss
@@ -300,7 +302,7 @@ class LightningModel(pl.LightningModule):
         )
 
 
-def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_logger):
+def train(experiment: Experiment, model, tokenizer, dataset, root_dir):
     logger.info(model)
     logger.info(tokenizer)
     logger.info(dataset)
@@ -325,18 +327,26 @@ def train(experiment: Experiment, model, tokenizer, dataset, root_dir, wandb_log
         mode="max",
     )
 
+    strategy = 'auto'
+    precision= None
+    if torch.cuda.is_available():
+        strategy = DDPStrategy(
+            find_unused_parameters=True,
+            timeout=datetime.timedelta(seconds=180000),
+        )
+        precision = experiment.optimization.precision
+
+
+    run_logger = get_logger()
     trainer = pl.Trainer(
         accelerator="gpu",
-        logger=wandb_logger,
+        logger=run_logger,
         max_epochs=experiment.optimization.max_epochs,
         default_root_dir=root_dir,
         log_every_n_steps=2,
         callbacks=[checkpoint_callback, lr_monitor, early_stop_callback],
-        strategy=DDPStrategy(
-            find_unused_parameters=True,
-            timeout=datetime.timedelta(seconds=180000),
-        ),
-        precision=experiment.optimization.precision,
+        strategy=strategy,
+        precision=precision,
     )
 
     pl_model = LightningModel(model, tokenizer, dataset, experiment)

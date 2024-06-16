@@ -6,5 +6,5 @@ model:
   kwargs:
     pick_one_layer_only: -1
 
-wandb:
+logging:
   name: ${cat:"diploma_pick", ${model.kwargs.pick_one_layer_only}, ${dataset.name}, ${model.name}}
