@@ -87,6 +87,7 @@ def process(experiment: Experiment, res_dir: str):
         )
     if torch.distributed.is_initialized():
         torch.distributed.barrier()
+    logger.info("finalize training, uploading artifacts")
     run_logger.finalize(status="success")
 
 
