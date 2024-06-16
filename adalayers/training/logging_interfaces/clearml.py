@@ -73,10 +73,16 @@ class ClearmlLogger(BaseLogger):
 
     def log_model_checkpoint(self, name, metadata, description, dir):
         assert name not in self.task.artifacts, f"Model with {name = } already exists"
-        return self.task.upload_artifact(
+        output_model = OutputModel(
+            task=self.task,
+            framework="PyTorch",
+            config_dict=metadata,
             name=name,
-            artifact_object=os.path.join(dir),
-            metadata=metadata | dict(description=description),
+            comment=description,
+        )
+        output_model.update_weights_package(
+            weights_path=dir,
+            auto_delete_file=False,
         )
 
     def log_artifact(self, name, metadata, description, object):
