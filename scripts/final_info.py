@@ -32,7 +32,7 @@ if os.environ.get("LANG") == "en":
     STRINGS = dict(
         base_solutions="base solutions",
         proposed_solution="proposed solution",
-        layer_number="layer number",
+        layer_number="layer index",
         step="step",
     )
 
