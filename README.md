@@ -22,7 +22,7 @@ for downstream tasks efficient solving.
 
 ## Paper
 
-[]()
+[Using Internal Representations of Frozen Transformer Models to Solve Downstream Tasks](https://github.com/alexdremov/adalayers/blob/main/text_en.pdf)
 
 ## Problem
 
