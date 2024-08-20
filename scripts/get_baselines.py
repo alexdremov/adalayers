@@ -2,7 +2,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from final_info import all_entities_mapping, api
+from final_info import all_entities_mapping, api, STRINGS, LANG
 
 font = {"size": 12 * 1.333}
 matplotlib.rc("font", **font)
@@ -41,51 +41,61 @@ def plot_baselines(name, baselines, metric, ours_score):
 
     baseline_layers = np.array([layer for layer, _ in baseline_data])
     baseline_scores = [score for _, score in baseline_data]
-    plt.figure(figsize=(10, 6))
-    plt.plot(
-        baseline_layers,
-        baseline_scores,
-        label="базовые решения",
-        marker="x",
-        linestyle="dotted",
-        markersize=12,
-        linewidth=4,
-        color="teal",
-        mew=3,
-    )
-    for i, value in enumerate(baseline_scores):
-        plt.annotate(
-            f"{value:.1f}",
-            xy=(baseline_layers[i], baseline_scores[i] + 0.6),
-            ha="center",
+
+    def plot(metric_names, prefix=''):
+        plt.figure(figsize=(10, 6))
+        plt.plot(
+            baseline_layers,
+            baseline_scores,
+            label=STRINGS["base_solutions"],
+            marker="x",
+            linestyle="dotted",
+            markersize=12,
+            linewidth=4,
+            color="teal",
+            mew=3,
+        )
+        for i, value in enumerate(baseline_scores):
+            plt.annotate(
+                f"{value:.1f}",
+                xy=(baseline_layers[i], baseline_scores[i] + 0.6),
+                ha="center",
+            )
+
+        plt.hlines(
+            min(ours_score + 2.5, 100),
+            xmin=baseline_layers.min(),
+            xmax=baseline_layers.max(),
+            color=(0, 0, 0, 0.01),
         )
 
-    plt.hlines(
-        min(ours_score + 2.5, 100),
-        xmin=baseline_layers.min(),
-        xmax=baseline_layers.max(),
-        color=(0, 0, 0, 0.01),
-    )
+        plt.hlines(
+            y=ours_score,
+            xmin=baseline_layers.min(),
+            xmax=baseline_layers.max(),
+            colors="crimson",
+            label=STRINGS['proposed_solution'],
+            linewidth=4,
+        )
 
-    plt.hlines(
-        y=ours_score,
-        xmin=baseline_layers.min(),
-        xmax=baseline_layers.max(),
-        colors="crimson",
-        label="предложенное решение",
-        linewidth=4,
-    )
+        metric_name = metric_names[metric]
 
-    metric_name = {"acc": "accuracy, %", "f1": "\\$f_1\\$, %"}[metric]
+        plt.legend(loc="upper right", fancybox=True, framealpha=1.0)
+        plt.xlabel(STRINGS['layer_number'], labelpad=12)
+        plt.ylabel(f"{metric_name}", labelpad=12)
+        plt.xticks(baseline_layers.tolist())
+        plt.tight_layout()
 
-    plt.legend(loc="upper right", fancybox=True, framealpha=1.0)
-    plt.xlabel("Номер слоя", labelpad=12)
-    plt.ylabel(f"{metric_name}", labelpad=12)
-    plt.xticks(baseline_layers.tolist())
-    plt.tight_layout()
+        plt.savefig(f"baselines/{name}{prefix}{LANG}.svg", transparent=True)
+        plt.savefig(f"baselines/{name}{prefix}{LANG}.png", transparent=True)
+        plt.close()
 
-    plt.savefig(f"baselines/{name}.svg", transparent=True)
-    plt.savefig(f"baselines/{name}.png", transparent=True)
+
+    metric_names = {"acc": "accuracy, %", "f1": "\\$f_1\\$, %"}
+    plot(metric_names)
+
+    metric_names = {"acc": "accuracy, %", "f1": "$f_1$, %"}
+    plot(metric_names, '_rendered')
 
 
 plot_baselines(

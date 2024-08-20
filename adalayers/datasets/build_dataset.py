@@ -58,6 +58,23 @@ def load_glue_cola(tokenizer: PreTrainedTokenizer):
     )
 
 
+def load_glue_cola_test(tokenizer: PreTrainedTokenizer):
+    dataset: datasets.DatasetDict = datasets.load_dataset("glue", "cola")
+
+    def preprocess(batch):
+        batch.update(tokenizer(batch["sentence"], truncation=True))
+        return batch
+
+    dataset = dataset.map(preprocess, batched=True)
+    val_train = train_val_split(dataset["train"])
+    return datasets.DatasetDict(
+        train=val_train["train"],
+        val=val_train["val"],
+        test=dataset["validation"],
+        unsupervised=dataset["test"],
+    )
+
+
 def load_imdb(tokenizer: PreTrainedTokenizer):
     dataset: datasets.DatasetDict = datasets.load_dataset("imdb")
 

@@ -1,3 +1,5 @@
+import os
+
 import wandb
 import wandb.apis
 import wandb.sdk
@@ -16,6 +18,23 @@ api = wandb.Api(
         project="adalayers",
     )
 )
+
+LANG=''
+STRINGS = dict(
+    base_solutions="базовые решения",
+    proposed_solution="предложенное решение",
+    layer_number="Номер слоя",
+    step="Шаг",
+)
+
+if os.environ.get("LANG") == "en":
+    LANG = 'en'
+    STRINGS = dict(
+        base_solutions="base solutions",
+        proposed_solution="proposed solution",
+        layer_number="layer number",
+        step="step",
+    )
 
 
 def get_artifacts(run):

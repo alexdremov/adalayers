@@ -27,7 +27,6 @@ class ClearmlLogger(BaseLogger):
             task_name=name,
             reuse_last_task_id=False,
             auto_connect_frameworks=False,
-            output_uri=True
         )
         self._save_dir = save_dir
         self.logger: Logger = self.task.get_logger()

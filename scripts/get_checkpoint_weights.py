@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
 import numpy as np
 
-from final_info import all_entities, api
+from final_info import all_entities, api, STRINGS, LANG
 
 
 def get_info(name, checkpoint):
@@ -43,16 +43,16 @@ def get_info(name, checkpoint):
         distr,
         color="teal",
     )
-    plt.xlabel("Номер слоя")
-    plt.ylabel("Величина \\$\\tilde{p}_i\\$")
+    plt.xlabel(STRINGS['layer_number'])
+    plt.ylabel("\\$\\tilde{p}_i\\$")
 
     loc = plticker.MultipleLocator(base=0.1)
     plt.gca().yaxis.set_major_locator(loc)
 
     plt.tight_layout()
 
-    plt.savefig(f"distrs/{name}_distr.svg", transparent=True)
-    plt.savefig(f"distrs/{name}_distr.png", transparent=True)
+    plt.savefig(f"distrs/{name}_distr{LANG}.svg", transparent=True)
+    plt.savefig(f"distrs/{name}_distr{LANG}.png", transparent=True)
 
     metrics = {"fone": artifact.metadata["f1"], "acc": artifact.metadata["acc"]}
     metrics = {k: v if v > 1 else v * 100 for k, v in metrics.items()}
